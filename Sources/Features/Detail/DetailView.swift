@@ -1,24 +1,23 @@
 import SwiftUI
-import SwiftData
 
 struct DetailView: View {
     let result: MediaSearchResult
 
-    @Environment(\.modelContext) private var context
-    @Query private var allItems: [WatchItem]
+    @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var session: Session
     @State private var details: MediaDetails?
     @State private var isLoadingDetails = true
 
     private let service = MetadataService()
 
-    private var existing: WatchItem? { allItems.first { $0.id == result.id } }
+    private var existing: LibraryItem? { store.item(forKey: result.id) }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 if let item = existing {
-                    LibraryControls(item: item)
+                    controls(for: item)
                 } else {
                     addSection
                 }
@@ -56,15 +55,61 @@ struct DetailView: View {
 
     private var addSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Add to your library").font(.headline)
-            ForEach(WatchState.allCases) { state in
-                Button {
-                    add(state: state)
-                } label: {
-                    Label(state.label, systemImage: state.systemImage)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            if session.household == nil {
+                Label("Set up your household in the Profile tab to start adding titles.",
+                      systemImage: "person.2")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                Text("Add to your library").font(.headline)
+                ForEach(WatchState.allCases) { state in
+                    Button {
+                        store.add(result: result, state: state, details: details)
+                    } label: {
+                        Label(state.label, systemImage: state.systemImage)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private func controls(for item: LibraryItem) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Status").font(.headline)
+                Picker("Status", selection: Binding(
+                    get: { item.state },
+                    set: { store.setState(item, to: $0) }
+                )) {
+                    ForEach(WatchState.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Your rating").font(.headline)
+                StarRating(rating: item.rating) { store.setRating(item, to: $0) }
+            }
+
+            if item.totalEpisodes > 0 {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Progress").font(.headline)
+                    Stepper("Season \(item.currentSeason)", value: Binding(
+                        get: { item.currentSeason },
+                        set: { store.setProgress(item, season: max(1, $0), episode: item.currentEpisode) }
+                    ), in: 1...max(1, item.totalSeasons))
+                    Stepper("Episode \(item.currentEpisode)", value: Binding(
+                        get: { item.currentEpisode },
+                        set: { store.setProgress(item, season: item.currentSeason, episode: max(0, $0)) }
+                    ), in: 0...max(0, item.totalEpisodes))
+                }
+            }
+
+            Button(role: .destructive) {
+                store.remove(item)
+            } label: {
+                Label("Remove from library", systemImage: "trash")
             }
         }
     }
@@ -82,92 +127,15 @@ struct DetailView: View {
         isLoadingDetails = true
         details = try? await service.details(for: result)
         isLoadingDetails = false
-
-        // Backfill totals/genres on an already-saved item once details arrive.
         if let item = existing, let details {
-            if item.totalEpisodes == 0 { item.totalEpisodes = details.totalEpisodes }
-            if item.totalSeasons == 0 { item.totalSeasons = details.totalSeasons }
-            if item.genres.isEmpty { item.genres = details.genres }
-            try? context.save()
+            store.backfill(item, with: details)
         }
-    }
-
-    private func add(state: WatchState) {
-        guard existing == nil else { return }   // no unique constraint under CloudKit
-        let item = WatchItem(
-            id: result.id,
-            title: result.title,
-            mediaType: result.mediaType,
-            state: state,
-            overview: result.overview,
-            posterURL: result.posterURL,
-            year: result.year,
-            totalSeasons: details?.totalSeasons ?? 0,
-            totalEpisodes: details?.totalEpisodes ?? 0,
-            genres: details?.genres ?? [],
-            source: result.source,
-            sourceId: result.sourceId)
-        context.insert(item)
-        try? context.save()
-    }
-}
-
-private struct LibraryControls: View {
-    @Bindable var item: WatchItem
-    @Environment(\.modelContext) private var context
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Status").font(.headline)
-                Picker("Status", selection: Binding(
-                    get: { item.state },
-                    set: { item.state = $0; touch() }
-                )) {
-                    ForEach(WatchState.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Your rating").font(.headline)
-                StarRating(rating: Binding(
-                    get: { item.rating },
-                    set: { item.rating = $0; touch() }
-                ))
-            }
-
-            if item.totalEpisodes > 0 {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Progress").font(.headline)
-                    Stepper("Season \(item.currentSeason)", value: Binding(
-                        get: { item.currentSeason },
-                        set: { item.currentSeason = max(1, $0); touch() }
-                    ), in: 1...max(1, item.totalSeasons))
-                    Stepper("Episode \(item.currentEpisode)", value: Binding(
-                        get: { item.currentEpisode },
-                        set: { item.currentEpisode = max(0, $0); touch() }
-                    ), in: 0...max(0, item.totalEpisodes))
-                }
-            }
-
-            Button(role: .destructive) {
-                context.delete(item)
-                try? context.save()
-            } label: {
-                Label("Remove from library", systemImage: "trash")
-            }
-        }
-    }
-
-    private func touch() {
-        item.updatedAt = .now
-        try? context.save()
     }
 }
 
 private struct StarRating: View {
-    @Binding var rating: Int
+    let rating: Int
+    let onChange: (Int) -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -175,7 +143,7 @@ private struct StarRating: View {
                 Image(systemName: value <= rating ? "star.fill" : "star")
                     .font(.title2)
                     .foregroundStyle(.yellow)
-                    .onTapGesture { rating = (rating == value) ? 0 : value }
+                    .onTapGesture { onChange(rating == value ? 0 : value) }
             }
         }
     }

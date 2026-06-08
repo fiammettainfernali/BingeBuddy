@@ -1,8 +1,7 @@
 import SwiftUI
-import SwiftData
 
 struct SearchView: View {
-    @Query private var items: [WatchItem]
+    @EnvironmentObject private var store: LibraryStore
     @State private var query = ""
     @State private var scope: SearchScope = .moviesTV
     @State private var results: [MediaSearchResult] = []
@@ -50,7 +49,7 @@ struct SearchView: View {
         } else {
             List(results) { result in
                 NavigationLink(value: result) {
-                    SearchRow(result: result, inLibrary: items.contains { $0.id == result.id })
+                    SearchRow(result: result, inLibrary: store.contains(mediaKey: result.id))
                 }
             }
             .listStyle(.plain)

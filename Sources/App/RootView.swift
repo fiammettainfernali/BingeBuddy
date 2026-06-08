@@ -3,6 +3,11 @@ import SwiftUI
 /// Phase 0 shell: the five tabs that will hold the real features.
 /// Each tab is a placeholder for now — we're proving the build pipeline first.
 struct RootView: View {
+    @EnvironmentObject private var session: Session
+    @EnvironmentObject private var library: LibraryStore
+
+    private var configKey: String { "\(session.uid ?? "")|\(session.household?.id ?? "")" }
+
     var body: some View {
         TabView {
             LibraryView()
@@ -27,6 +32,9 @@ struct RootView: View {
 
             ProfileView()
                 .tabItem { Label("Profile", systemImage: "person.crop.circle.fill") }
+        }
+        .task(id: configKey) {
+            library.configure(householdId: session.household?.id, uid: session.uid)
         }
     }
 }

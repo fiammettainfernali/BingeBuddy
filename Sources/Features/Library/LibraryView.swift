@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 enum LibrarySort: String, CaseIterable, Identifiable {
     case updated = "Recently Updated"
@@ -11,7 +10,8 @@ enum LibrarySort: String, CaseIterable, Identifiable {
 }
 
 struct LibraryView: View {
-    @Query(sort: \WatchItem.updatedAt, order: .reverse) private var items: [WatchItem]
+    @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var session: Session
 
     @State private var selectedState: WatchState = .watching
     @State private var typeFilter: MediaType?
@@ -19,16 +19,20 @@ struct LibraryView: View {
     @State private var sort: LibrarySort = .updated
     @State private var searchText = ""
 
+    private var personalItems: [LibraryItem] {
+        store.items.filter { $0.scope == "personal" }
+    }
+
     private var availableGenres: [String] {
-        Set(items.flatMap { $0.genres }).sorted()
+        Set(personalItems.flatMap { $0.genres }).sorted()
     }
 
     private var filtersActive: Bool {
         typeFilter != nil || genreFilter != nil || !searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    private var visible: [WatchItem] {
-        var result = items.filter { $0.state == selectedState }
+    private var visible: [LibraryItem] {
+        var result = personalItems.filter { $0.state == selectedState }
 
         if let typeFilter {
             result = result.filter { $0.mediaType == typeFilter }
@@ -43,7 +47,7 @@ struct LibraryView: View {
 
         switch sort {
         case .updated:
-            result.sort { $0.updatedAt > $1.updatedAt }
+            result.sort { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
         case .title:
             result.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
         case .rating:
@@ -56,36 +60,43 @@ struct LibraryView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                Picker("State", selection: $selectedState) {
-                    ForEach(WatchState.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .padding([.horizontal, .top])
-
-                filterBar
-
-                if visible.isEmpty {
+            Group {
+                if session.household == nil {
                     ContentUnavailableView(
-                        filtersActive ? "No matches" : "Nothing here yet",
-                        systemImage: filtersActive ? "line.3.horizontal.decrease.circle" : selectedState.systemImage,
-                        description: Text(filtersActive
-                                          ? "Try clearing filters or changing the status tab."
-                                          : "Add titles from the Search tab."))
+                        "Set up your household",
+                        systemImage: "person.2",
+                        description: Text("Go to the Profile tab to create or join a household. Your library syncs once you're set up."))
                 } else {
-                    List {
-                        ForEach(visible) { item in
-                            NavigationLink(value: item) { LibraryRow(item: item) }
+                    VStack(spacing: 0) {
+                        Picker("State", selection: $selectedState) {
+                            ForEach(WatchState.allCases) { Text($0.label).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding([.horizontal, .top])
+
+                        filterBar
+
+                        if visible.isEmpty {
+                            ContentUnavailableView(
+                                filtersActive ? "No matches" : "Nothing here yet",
+                                systemImage: filtersActive ? "line.3.horizontal.decrease.circle" : selectedState.systemImage,
+                                description: Text(filtersActive
+                                                  ? "Try clearing filters or changing the status tab."
+                                                  : "Add titles from the Search tab."))
+                        } else {
+                            List {
+                                ForEach(visible) { item in
+                                    NavigationLink(value: item.asSearchResult) { LibraryRow(item: item) }
+                                }
+                            }
+                            .listStyle(.plain)
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Library")
             .searchable(text: $searchText, prompt: "Filter your library")
-            .navigationDestination(for: WatchItem.self) { item in
-                DetailView(result: item.asSearchResult)
-            }
+            .navigationDestination(for: MediaSearchResult.self) { DetailView(result: $0) }
         }
     }
 
@@ -166,7 +177,7 @@ private struct FilterChip: View {
 }
 
 private struct LibraryRow: View {
-    let item: WatchItem
+    let item: LibraryItem
 
     var body: some View {
         HStack(spacing: 12) {
