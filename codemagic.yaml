@@ -43,9 +43,11 @@ workflows:
         script: |
           set -ex
           keychain initialize
-          # Create/fetch the App Store provisioning profile (and certificate if missing).
+          # Create/fetch the App Store cert (using OUR private key, so it's reusable across
+          # builds) and the provisioning profile for our bundle id.
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
             --create \
             --verbose
           keychain add-certificates

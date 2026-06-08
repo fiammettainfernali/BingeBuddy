@@ -11,8 +11,10 @@ DerivedData/
 Secrets.xcconfig
 *.p8
 *.p12
+*.pem
 *.mobileprovision
 *.cer
+signing_key.pem
 
 # macOS / misc
 .DS_Store
