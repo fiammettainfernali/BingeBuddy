@@ -25,12 +25,8 @@ struct RootView: View {
             )
             .tabItem { Label("Inbox", systemImage: "tray.fill") }
 
-            PlaceholderTab(
-                title: "Profile",
-                systemImage: "person.crop.circle.fill",
-                message: "Settings, partner pairing, and your private vault."
-            )
-            .tabItem { Label("Profile", systemImage: "person.crop.circle.fill") }
+            ProfileView()
+                .tabItem { Label("Profile", systemImage: "person.crop.circle.fill") }
         }
     }
 }
