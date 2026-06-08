@@ -5,12 +5,11 @@ import SwiftUI
 struct RootView: View {
     var body: some View {
         TabView {
-            PlaceholderTab(
-                title: "Library",
-                systemImage: "rectangle.stack.fill",
-                message: "Your shows, movies & anime will live here."
-            )
-            .tabItem { Label("Library", systemImage: "rectangle.stack.fill") }
+            LibraryView()
+                .tabItem { Label("Library", systemImage: "rectangle.stack.fill") }
+
+            SearchView()
+                .tabItem { Label("Search", systemImage: "magnifyingglass") }
 
             PlaceholderTab(
                 title: "Together",
@@ -18,13 +17,6 @@ struct RootView: View {
                 message: "Stuff you watch as a couple — and your match list."
             )
             .tabItem { Label("Together", systemImage: "heart.fill") }
-
-            PlaceholderTab(
-                title: "Search",
-                systemImage: "magnifyingglass",
-                message: "Find a title and pull its cover, seasons & episodes."
-            )
-            .tabItem { Label("Search", systemImage: "magnifyingglass") }
 
             PlaceholderTab(
                 title: "Inbox",

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @main
 struct BingeBuddyApp: App {
@@ -6,5 +7,6 @@ struct BingeBuddyApp: App {
         WindowGroup {
             RootView()
         }
+        .modelContainer(for: WatchItem.self)
     }
 }

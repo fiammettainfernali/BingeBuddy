@@ -31,6 +31,14 @@ workflows:
         - pattern: main
           include: true
     scripts:
+      - name: Inject secrets
+        script: |
+          cat > Sources/Support/Secrets.swift <<EOF
+          enum Secrets {
+              static let tmdbReadToken = "$TMDB_READ_TOKEN"
+          }
+          EOF
+
       - name: Install XcodeGen
         script: |
           brew install xcodegen
