@@ -215,15 +215,15 @@ on-device for two people.
 
 ## 9. Phased roadmap
 
-**Phase 0 — Project setup**
-- Xcode project, bundle id, CloudKit container, Codemagic pipeline (build + TestFlight).
+**Phase 0 — Project setup** ✅ DONE
+- XcodeGen project, bundle id, Codemagic pipeline (build + sign + TestFlight). Green build shipped.
 - TMDB key wired via Codemagic env var.
 
-**Phase 1 — MVP (single user, real value fast)**
+**Phase 1 — MVP (single user, real value fast)** ✅ DONE (verified on device)
 - Search (TMDB + AniList) → add → personal lists with states.
 - Item detail with metadata + cover.
-- Episode progress.
-- Local-first; CloudKit private DB sync to your own devices.
+- Episode progress (season/episode numbers).
+- Local-first via SwiftData.
 
 **Phase 2 — Two users + Together**
 - Partner pairing via CKShare.
@@ -260,3 +260,17 @@ on-device for two people.
 - Inject `TMDB_API_KEY` as an encrypted env var; generate the `.xcconfig` at build time.
 - Manual TestFlight distribution to just you + her (internal testers) — no App Store review
   needed for a two-person app.
+
+---
+
+## 12. Backlog / TODO (not yet scheduled into a phase)
+
+- **Library filters & sort** — filter the Library by media type (Movie / TV / Anime) and by
+  genre; sort by recently updated, title, rating, or year; optional search-within-library.
+  (Currently Library only filters by watch state.)
+- **Per-episode titles & checklist** — Phase 1 tracks season/episode *numbers* only; the agreed
+  design is a full episode list with titles you can check off. Pull episode lists from
+  TMDB (`/tv/{id}/season/{n}`) and AniList.
+- **App icon redesign** — replace the placeholder gradient/play icon with real artwork.
+- **Automate build numbers** — drive `CURRENT_PROJECT_VERSION` from Codemagic `$BUILD_NUMBER`
+  instead of bumping `project.yml` by hand each upload.
