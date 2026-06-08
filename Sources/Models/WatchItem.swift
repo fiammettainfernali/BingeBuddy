@@ -3,28 +3,32 @@ import SwiftData
 
 /// A title in someone's library, with their personal state, rating, and progress.
 /// Metadata is denormalized onto the item for Phase 1 (simple + offline-friendly).
+///
+/// CloudKit rules: no `.unique` constraints, and every stored property must be optional
+/// or have a default value — hence the defaults below.
 @Model
 final class WatchItem {
     /// Stable id: "<source>-<sourceId>", e.g. "tmdb-1399" or "anilist-21".
-    @Attribute(.unique) var id: String
+    /// (Dedup is enforced in code, since CloudKit disallows unique constraints.)
+    var id: String = ""
 
-    var title: String
-    var mediaTypeRaw: String
-    var stateRaw: String
-    var overview: String
+    var title: String = ""
+    var mediaTypeRaw: String = MediaType.movie.rawValue
+    var stateRaw: String = WatchState.wantToWatch.rawValue
+    var overview: String = ""
     var posterURL: String?
     var year: String?
-    var rating: Int            // 0 = unrated, otherwise 1...5
-    var currentSeason: Int
-    var currentEpisode: Int
-    var totalSeasons: Int
-    var totalEpisodes: Int
-    var genres: [String]
-    var source: String         // "tmdb" | "anilist"
-    var sourceId: String
-    var note: String
-    var addedAt: Date
-    var updatedAt: Date
+    var rating: Int = 0            // 0 = unrated, otherwise 1...5
+    var currentSeason: Int = 1
+    var currentEpisode: Int = 0
+    var totalSeasons: Int = 0
+    var totalEpisodes: Int = 0
+    var genres: [String] = []
+    var source: String = ""        // "tmdb" | "anilist"
+    var sourceId: String = ""
+    var note: String = ""
+    var addedAt: Date = Date()
+    var updatedAt: Date = Date()
 
     init(
         id: String,

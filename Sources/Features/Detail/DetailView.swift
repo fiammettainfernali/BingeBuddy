@@ -93,6 +93,7 @@ struct DetailView: View {
     }
 
     private func add(state: WatchState) {
+        guard existing == nil else { return }   // no unique constraint under CloudKit
         let item = WatchItem(
             id: result.id,
             title: result.title,
