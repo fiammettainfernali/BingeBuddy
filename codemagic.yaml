@@ -1,0 +1,68 @@
+# Codemagic CI/CD — builds BingeBuddy on a cloud Mac and ships to TestFlight.
+#
+# One-time setup in the Codemagic UI (see README "Codemagic setup"):
+#   1. Connect this GitHub repo.
+#   2. Add an App Store Connect API key integration named exactly: codemagic_asc
+#   3. Add an environment variable group named "bingebuddy" containing:
+#        - TMDB_READ_TOKEN   (your TMDB v4 Read Access Token — mark as Secure)
+#        - APP_STORE_APP_ID  (the app's numeric Apple ID from App Store Connect)
+#
+# After that, every push to main triggers a build.
+
+workflows:
+  ios-testflight:
+    name: BingeBuddy → TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: codemagic_asc
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.bingebuddy.app
+      groups:
+        - bingebuddy
+      vars:
+        XCODE_PROJECT: "BingeBuddy.xcodeproj"
+        XCODE_SCHEME: "BingeBuddy"
+        BUNDLE_ID: "com.bingebuddy.app"
+      xcode: latest
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
+
+      - name: Generate Xcode project from project.yml
+        script: |
+          xcodegen generate
+
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal
