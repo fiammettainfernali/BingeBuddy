@@ -1,15 +1,16 @@
 import SwiftUI
 import SwiftData
+import FirebaseCore
 
 @main
 struct BingeBuddyApp: App {
     let container: ModelContainer
 
     init() {
+        FirebaseApp.configure()
         do {
-            // .automatic picks up the CloudKit container from the app's entitlements,
-            // syncing each user's library to their own private iCloud database.
-            let config = ModelConfiguration(cloudKitDatabase: .automatic)
+            // SwiftData stays local-only now; Firebase/Firestore handles sync + sharing.
+            let config = ModelConfiguration(cloudKitDatabase: .none)
             container = try ModelContainer(for: WatchItem.self, configurations: config)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")

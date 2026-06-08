@@ -8,10 +8,15 @@ options:
     iOS: "18.0"
   createIntermediateGroups: true
 
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: "11.0.0"
+
 settings:
   base:
-    MARKETING_VERSION: "0.3.0"
-    CURRENT_PROJECT_VERSION: "5"
+    MARKETING_VERSION: "0.4.0"
+    CURRENT_PROJECT_VERSION: "6"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: "6UYHJ5YC3V"            # your Apple Developer Team ID
 
@@ -22,6 +27,11 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: Sources
+    dependencies:
+      - package: Firebase
+        product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseAuth
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jessesmith.bingebuddy
@@ -34,10 +44,3 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"           # iPhone only
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Manual
-    entitlements:
-      path: BingeBuddy.entitlements
-      properties:
-        com.apple.developer.icloud-container-identifiers:
-          - iCloud.com.jessesmith.bingebuddy
-        com.apple.developer.icloud-services:
-          - CloudKit
