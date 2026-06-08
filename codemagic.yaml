@@ -17,9 +17,6 @@ workflows:
     integrations:
       app_store_connect: Codemagic02
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.jessesmith.bingebuddy
       groups:
         - bingebuddy
       vars:
