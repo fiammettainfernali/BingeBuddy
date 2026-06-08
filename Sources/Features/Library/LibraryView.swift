@@ -63,6 +63,8 @@ struct LibraryView: View {
                 .pickerStyle(.segmented)
                 .padding([.horizontal, .top])
 
+                filterBar
+
                 if visible.isEmpty {
                     ContentUnavailableView(
                         filtersActive ? "No matches" : "Nothing here yet",
@@ -81,52 +83,85 @@ struct LibraryView: View {
             }
             .navigationTitle("Library")
             .searchable(text: $searchText, prompt: "Filter your library")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { filterMenu }
-            }
             .navigationDestination(for: WatchItem.self) { item in
                 DetailView(result: item.asSearchResult)
             }
         }
     }
 
-    private var filterMenu: some View {
-        Menu {
-            Picker("Type", selection: $typeFilter) {
-                Text("All Types").tag(MediaType?.none)
-                ForEach(MediaType.allCases, id: \.self) { type in
-                    Text(type.label).tag(MediaType?.some(type))
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Menu {
+                    Picker("Type", selection: $typeFilter) {
+                        Text("All Types").tag(MediaType?.none)
+                        ForEach(MediaType.allCases, id: \.self) { type in
+                            Text(type.label).tag(MediaType?.some(type))
+                        }
+                    }
+                } label: {
+                    FilterChip(title: "Type", value: typeFilter?.label ?? "All", active: typeFilter != nil)
                 }
-            }
 
-            if !availableGenres.isEmpty {
-                Picker("Genre", selection: $genreFilter) {
-                    Text("All Genres").tag(String?.none)
-                    ForEach(availableGenres, id: \.self) { genre in
-                        Text(genre).tag(String?.some(genre))
+                if !availableGenres.isEmpty {
+                    Menu {
+                        Picker("Genre", selection: $genreFilter) {
+                            Text("All Genres").tag(String?.none)
+                            ForEach(availableGenres, id: \.self) { genre in
+                                Text(genre).tag(String?.some(genre))
+                            }
+                        }
+                    } label: {
+                        FilterChip(title: "Genre", value: genreFilter ?? "All", active: genreFilter != nil)
                     }
                 }
-            }
 
-            Picker("Sort by", selection: $sort) {
-                ForEach(LibrarySort.allCases) { Text($0.rawValue).tag($0) }
-            }
-
-            if typeFilter != nil || genreFilter != nil {
-                Divider()
-                Button(role: .destructive) {
-                    typeFilter = nil
-                    genreFilter = nil
+                Menu {
+                    Picker("Sort by", selection: $sort) {
+                        ForEach(LibrarySort.allCases) { Text($0.rawValue).tag($0) }
+                    }
                 } label: {
-                    Label("Clear filters", systemImage: "xmark.circle")
+                    FilterChip(title: "Sort", value: sort.rawValue, active: false)
+                }
+
+                if typeFilter != nil || genreFilter != nil {
+                    Button {
+                        typeFilter = nil
+                        genreFilter = nil
+                    } label: {
+                        Label("Clear", systemImage: "xmark.circle.fill")
+                            .font(.subheadline)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Capsule().fill(Color(.secondarySystemBackground)))
+                    }
+                    .tint(.red)
                 }
             }
-        } label: {
-            Label("Filter",
-                  systemImage: (typeFilter != nil || genreFilter != nil)
-                    ? "line.3.horizontal.decrease.circle.fill"
-                    : "line.3.horizontal.decrease.circle")
+            .padding(.horizontal)
+            .padding(.vertical, 8)
         }
+    }
+}
+
+private struct FilterChip: View {
+    let title: String
+    let value: String
+    let active: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("\(title):").foregroundStyle(.secondary)
+            Text(value).fontWeight(.medium)
+            Image(systemName: "chevron.down").font(.caption2)
+        }
+        .font(.subheadline)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(
+            Capsule().fill(active ? Color.accentColor.opacity(0.2) : Color(.secondarySystemBackground))
+        )
+        .foregroundStyle(active ? Color.accentColor : Color.primary)
     }
 }
 
