@@ -50,8 +50,8 @@ You're already in the Apple Developer Program.
 ### 4. Codemagic — connect & configure
 1. Sign in at **codemagic.io** with your GitHub account; authorize it to see the repo.
 2. Add the `bingebuddy` repo as an application.
-3. **Integrations → App Store Connect:** add a key named exactly **`codemagic_asc`**, using
-   the Issuer ID, Key ID, and the `.p8` file from step 2.
+3. **Integrations → App Store Connect:** the connected integration is named **`Codemagic02`**
+   (reused from another project — one App Store Connect key works for all your apps).
 4. **Environment variables:** create a group named **`bingebuddy`** and add:
    - `TMDB_READ_TOKEN` = your TMDB v4 token — check **Secure**.
    - `APP_STORE_APP_ID` = the app's Apple ID number from step 1.
