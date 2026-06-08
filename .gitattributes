@@ -5,3 +5,8 @@
 *.yaml  text eol=lf
 *.md    text eol=lf
 *.xcconfig text eol=lf
+
+# Binary assets — never apply line-ending conversion
+*.png binary
+*.jpg binary
+*.pdf binary
