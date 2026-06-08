@@ -19,13 +19,13 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.bingebuddy.app
+        bundle_identifier: com.jessesmith.bingebuddy
       groups:
         - bingebuddy
       vars:
         XCODE_PROJECT: "BingeBuddy.xcodeproj"
         XCODE_SCHEME: "BingeBuddy"
-        BUNDLE_ID: "com.bingebuddy.app"
+        BUNDLE_ID: "com.jessesmith.bingebuddy"
       xcode: latest
     triggering:
       events:

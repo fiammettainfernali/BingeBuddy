@@ -28,7 +28,7 @@ You're already in the Apple Developer Program.
 1. Go to **appstoreconnect.apple.com** → **My Apps** → **＋** → **New App**.
 2. Platform: **iOS**. Name: **BingeBuddy** (must be unique on the App Store — if taken, try
    "BingeBuddy Tracker" and tell me so I update the bundle id).
-3. Bundle ID: choose **com.bingebuddy.app** if available. If you have to pick a different
+3. Bundle ID: choose **com.jessesmith.bingebuddy** if available. If you have to pick a different
    one, **tell me the exact string** so I match it in `project.yml` and `codemagic.yaml`.
 4. SKU: anything, e.g. `bingebuddy01`. Save.
 5. Note the app's **Apple ID** (a long number shown on the app's page) — you'll need it

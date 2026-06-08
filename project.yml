@@ -3,7 +3,7 @@
 name: BingeBuddy
 
 options:
-  bundleIdPrefix: com.bingebuddy
+  bundleIdPrefix: com.jessesmith
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
@@ -24,7 +24,7 @@ targets:
       - path: Sources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.bingebuddy.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.jessesmith.bingebuddy
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: BingeBuddy
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
