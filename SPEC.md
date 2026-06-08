@@ -265,9 +265,8 @@ on-device for two people.
 
 ## 12. Backlog / TODO (not yet scheduled into a phase)
 
-- **Library filters & sort** — filter the Library by media type (Movie / TV / Anime) and by
-  genre; sort by recently updated, title, rating, or year; optional search-within-library.
-  (Currently Library only filters by watch state.)
+- ~~**Library filters & sort**~~ ✅ DONE — filter by media type + genre, sort by updated/title/
+  rating/year, and search within the library.
 - **Per-episode titles & checklist** — Phase 1 tracks season/episode *numbers* only; the agreed
   design is a full episode list with titles you can check off. Pull episode lists from
   TMDB (`/tv/{id}/season/{n}`) and AniList.
