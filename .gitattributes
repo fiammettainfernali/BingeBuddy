@@ -1,0 +1,7 @@
+# Force Unix (LF) line endings — these are built/run on a Mac via Codemagic.
+* text=auto eol=lf
+*.swift text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.md    text eol=lf
+*.xcconfig text eol=lf
