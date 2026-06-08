@@ -41,11 +41,23 @@ workflows:
 
       - name: Set up code signing
         script: |
+          set -ex
           keychain initialize
+          # Create/fetch the App Store provisioning profile (and certificate if missing).
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE --create
+            --type IOS_APP_STORE \
+            --create \
+            --verbose
           keychain add-certificates
-          xcode-project use-profiles
+          xcode-project use-profiles --verbose
+          echo "===== DIAGNOSTICS ====="
+          echo "--- Provisioning profiles on disk ---"
+          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/" 2>/dev/null || echo "NONE FOUND"
+          echo "--- Code signing identities in keychain ---"
+          security find-identity -v -p codesigning || true
+          echo "--- Signing-related build settings ---"
+          xcodebuild -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -showBuildSettings 2>/dev/null \
+            | grep -Ei "CODE_SIGN|PROVISIONING|DEVELOPMENT_TEAM|PRODUCT_BUNDLE" || true
 
       - name: Build IPA
         script: |
