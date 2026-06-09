@@ -15,7 +15,7 @@ packages:
 
 settings:
   base:
-    MARKETING_VERSION: "0.9.3"
+    MARKETING_VERSION: "0.10.0"
     CURRENT_PROJECT_VERSION: "16"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: "6UYHJ5YC3V"            # your Apple Developer Team ID

@@ -87,6 +87,17 @@ struct LibraryView: View {
                             List {
                                 ForEach(visible) { item in
                                     NavigationLink(value: item.asSearchResult) { LibraryRow(item: item) }
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                            if item.totalEpisodes > 0 {
+                                                Button {
+                                                    let next = min(item.currentEpisode + 1, item.totalEpisodes)
+                                                    store.setProgress(item, season: item.currentSeason, episode: next)
+                                                } label: {
+                                                    Label("+1 Ep", systemImage: "plus")
+                                                }
+                                                .tint(.indigo)
+                                            }
+                                        }
                                 }
                             }
                             .listStyle(.plain)

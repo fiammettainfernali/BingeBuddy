@@ -270,8 +270,8 @@ on-device for two people.
 ### Watching & tracking
 - **Per-episode titles & checklist** — full episode list with titles you check off
   (TMDB `/tv/{id}/season/{n}`, AniList). Tracks numbers only today.
-- ★ **Swipe "+1 episode"** — bump the next episode straight from a library row, no need to
-  open the detail. Plus a "mark next watched" quick action.
+- ~~★ **Swipe "+1 episode"**~~ ✅ DONE — swipe a row in Library or the Together "Up next" list to
+  bump the episode.
 - **Auto-finish prompt** — when current episode hits the total, offer to mark it Finished.
 - **Rewatch flag / count** — mark something as a rewatch instead of resetting progress.
 
@@ -283,8 +283,8 @@ on-device for two people.
 - **Runtime / time-to-finish** — estimate hours left in a series.
 
 ### Couple features
-- ★ **Date-night picker** — "spin" to randomly pick tonight's show from your Matches or shared
-  Want list. Removes decision paralysis.
+- ~~★ **Date-night picker**~~ ✅ DONE — shuffle button in Together picks a random title from your
+  Matches + shared want/watching list.
 - **Suggestion notes** — let the sender add a message when suggesting (field exists; no UI yet).
 - **Reactions / mini-reviews** — a short note or emoji reaction per shared/partner title
   ("loved the finale").

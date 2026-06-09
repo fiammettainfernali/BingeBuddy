@@ -4,6 +4,25 @@ struct TogetherView: View {
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var session: Session
     @State private var segment: Segment = .shared
+    @State private var pick: LibraryItem?
+    @State private var showPick = false
+
+    /// Candidates for date-night: shared want/watching + titles you both want.
+    private var dateNightPool: [LibraryItem] {
+        var seen = Set<String>()
+        var pool: [LibraryItem] = []
+        let candidates = store.matches
+            + store.togetherItems.filter { $0.state == .wantToWatch || $0.state == .watching }
+        for item in candidates where seen.insert(item.mediaKey).inserted {
+            pool.append(item)
+        }
+        return pool
+    }
+
+    private func spin() {
+        pick = dateNightPool.randomElement()
+        if pick != nil { showPick = true }
+    }
 
     enum Segment: String, CaseIterable, Identifiable {
         case shared = "Shared"
@@ -48,6 +67,21 @@ struct TogetherView: View {
             }
             .navigationTitle("Together")
             .navigationDestination(for: MediaSearchResult.self) { DetailView(result: $0) }
+            .toolbar {
+                if session.partnerName != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { spin() } label: {
+                            Image(systemName: "shuffle")
+                        }
+                        .disabled(dateNightPool.isEmpty)
+                    }
+                }
+            }
+            .sheet(isPresented: $showPick) {
+                if let pick {
+                    DateNightSheet(item: pick) { self.pick = dateNightPool.randomElement() }
+                }
+            }
         }
     }
 
@@ -81,6 +115,17 @@ struct TogetherView: View {
                         ForEach(active) { item in
                             NavigationLink(value: item.asSearchResult) {
                                 ItemRow(item: item, subtitle: statusLine(item))
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                if item.totalEpisodes > 0 {
+                                    Button {
+                                        let next = min(item.currentEpisode + 1, item.totalEpisodes)
+                                        store.setProgress(item, season: item.currentSeason, episode: next)
+                                    } label: {
+                                        Label("+1 Ep", systemImage: "plus")
+                                    }
+                                    .tint(.indigo)
+                                }
                             }
                         }
                     }
@@ -162,5 +207,42 @@ private struct ItemRow: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, 4)
+    }
+}
+
+private struct DateNightSheet: View {
+    let item: LibraryItem
+    let onSpinAgain: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Text("Tonight, watch…")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            PosterImage(url: item.posterURL, width: 150, height: 225)
+
+            Text(item.title)
+                .font(.title2.bold())
+                .multilineTextAlignment(.center)
+            Text(item.mediaType.label + (item.year.map { " · \($0)" } ?? ""))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                Button { onSpinAgain() } label: {
+                    Label("Spin again", systemImage: "shuffle").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button { dismiss() } label: {
+                    Text("Let's watch!").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.top, 8)
+        }
+        .padding(28)
+        .presentationDetents([.medium])
     }
 }
