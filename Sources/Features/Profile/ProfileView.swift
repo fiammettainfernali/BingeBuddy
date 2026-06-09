@@ -63,6 +63,20 @@ struct ProfileView: View {
                 }
                 .disabled(session.isBusy)
             }
+
+            vaultSection
+        }
+    }
+
+    // MARK: - Vault
+
+    private var vaultSection: some View {
+        Section("Private") {
+            NavigationLink {
+                VaultContainerView()
+            } label: {
+                Label("Vault", systemImage: "lock.fill")
+            }
         }
     }
 
@@ -104,6 +118,8 @@ struct ProfileView: View {
                     Text(error).foregroundStyle(.red)
                 }
             }
+
+            vaultSection
         }
     }
 }

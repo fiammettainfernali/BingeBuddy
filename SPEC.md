@@ -297,8 +297,8 @@ on-device for two people.
 - **Stats** — titles/hours watched this year, top genres, a fun year-in-review.
 
 ### Accounts & robustness
-- ★ **Sign in with Apple** — upgrade from anonymous auth so data survives reinstalls and works
-  across your own devices (iPhone + iPad). Most important robustness upgrade.
+- **Sign in with Apple** — (deferred, not needed yet) upgrade from anonymous auth so data
+  survives reinstalls and works across your own devices (iPhone + iPad).
 - **iPad support** — currently iPhone-only; SwiftUI would mostly adapt for free.
 
 ### Polish
