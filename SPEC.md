@@ -265,11 +265,47 @@ on-device for two people.
 
 ## 12. Backlog / TODO (not yet scheduled into a phase)
 
-- ~~**Library filters & sort**~~ ✅ DONE — filter by media type + genre, sort by updated/title/
-  rating/year, and search within the library.
-- **Per-episode titles & checklist** — Phase 1 tracks season/episode *numbers* only; the agreed
-  design is a full episode list with titles you can check off. Pull episode lists from
-  TMDB (`/tv/{id}/season/{n}`) and AniList.
+★ = high impact / strong recommendation.
+
+### Watching & tracking
+- **Per-episode titles & checklist** — full episode list with titles you check off
+  (TMDB `/tv/{id}/season/{n}`, AniList). Tracks numbers only today.
+- ★ **Swipe "+1 episode"** — bump the next episode straight from a library row, no need to
+  open the detail. Plus a "mark next watched" quick action.
+- **Auto-finish prompt** — when current episode hits the total, offer to mark it Finished.
+- **Rewatch flag / count** — mark something as a rewatch instead of resetting progress.
+
+### Discovery & info
+- ★ **Where to watch** — show which streaming services a title is on (TMDB watch-providers
+  endpoint). "It's on Hulu." Hugely practical.
+- ★ **Browse / trending** — a discover row of trending & popular titles (TMDB trending) so
+  Search isn't the only way in.
+- **Runtime / time-to-finish** — estimate hours left in a series.
+
+### Couple features
+- ★ **Date-night picker** — "spin" to randomly pick tonight's show from your Matches or shared
+  Want list. Removes decision paralysis.
+- **Suggestion notes** — let the sender add a message when suggesting (field exists; no UI yet).
+- **Reactions / mini-reviews** — a short note or emoji reaction per shared/partner title
+  ("loved the finale").
+- **Activity feed** — "Sarah finished Severance ★★★★★" so you each see what the other did.
+- ★ **Push notifications** — alert when your partner suggests something or finishes a shared
+  show. (Requires enabling the Push capability we deferred.)
+
+### Organization & insight
+- **Custom tags / lists** — beyond the 4 states (e.g. "Cozy", "Spooky", "Rainy day").
+- **Stats** — titles/hours watched this year, top genres, a fun year-in-review.
+
+### Accounts & robustness
+- ★ **Sign in with Apple** — upgrade from anonymous auth so data survives reinstalls and works
+  across your own devices (iPhone + iPad). Most important robustness upgrade.
+- **iPad support** — currently iPhone-only; SwiftUI would mostly adapt for free.
+
+### Polish
+- **Home-screen widget** — "next up" / tonight's pick.
+- **Pull-to-refresh, haptics, nicer empty states, loading skeletons.**
 - **App icon redesign** — replace the placeholder gradient/play icon with real artwork.
+
+### Housekeeping
 - **Automate build numbers** — drive `CURRENT_PROJECT_VERSION` from Codemagic `$BUILD_NUMBER`
   instead of bumping `project.yml` by hand each upload.
