@@ -5,7 +5,6 @@ struct TogetherView: View {
     @EnvironmentObject private var session: Session
     @State private var segment: Segment = .shared
     @State private var pick: LibraryItem?
-    @State private var showPick = false
 
     /// Candidates for date-night: shared want/watching + titles you both want.
     private var dateNightPool: [LibraryItem] {
@@ -21,7 +20,6 @@ struct TogetherView: View {
 
     private func spin() {
         pick = dateNightPool.randomElement()
-        if pick != nil { showPick = true }
     }
 
     enum Segment: String, CaseIterable, Identifiable {
@@ -77,10 +75,8 @@ struct TogetherView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showPick) {
-                if let pick {
-                    DateNightSheet(item: pick) { self.pick = dateNightPool.randomElement() }
-                }
+            .sheet(item: $pick) { picked in
+                DateNightSheet(item: picked) { pick = dateNightPool.randomElement() }
             }
         }
     }
