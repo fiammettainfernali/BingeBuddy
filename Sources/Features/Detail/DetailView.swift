@@ -5,12 +5,15 @@ struct DetailView: View {
 
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var session: Session
+    @EnvironmentObject private var suggestions: SuggestionStore
     @State private var details: MediaDetails?
     @State private var isLoadingDetails = true
+    @State private var didSuggest = false
 
     private let service = MetadataService()
 
     private var existing: LibraryItem? { store.item(forKey: result.id) }
+    private var togetherItem: LibraryItem? { store.togetherItem(forKey: result.id) }
 
     var body: some View {
         ScrollView {
@@ -21,13 +24,78 @@ struct DetailView: View {
                 } else {
                     addSection
                 }
+                togetherSection
                 synopsis
             }
             .padding()
         }
         .navigationTitle(result.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if session.partnerName != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        sendSuggestion()
+                    } label: {
+                        Image(systemName: "paperplane")
+                    }
+                }
+            }
+        }
+        .alert("Sent to \(session.partnerName ?? "your partner")", isPresented: $didSuggest) {
+            Button("OK", role: .cancel) {}
+        }
         .task { await loadDetails() }
+    }
+
+    @ViewBuilder private var togetherSection: some View {
+        if session.partnerName != nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Divider()
+                Text("Watch Together").font(.headline)
+                if let item = togetherItem {
+                    Picker("Status", selection: Binding(
+                        get: { item.state },
+                        set: { store.setState(item, to: $0) }
+                    )) {
+                        ForEach(WatchState.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if item.totalEpisodes > 0 {
+                        Stepper("Season \(item.currentSeason)", value: Binding(
+                            get: { item.currentSeason },
+                            set: { store.setProgress(item, season: max(1, $0), episode: item.currentEpisode) }
+                        ), in: 1...max(1, item.totalSeasons))
+                        Stepper("Episode \(item.currentEpisode)", value: Binding(
+                            get: { item.currentEpisode },
+                            set: { store.setProgress(item, season: item.currentSeason, episode: max(0, $0)) }
+                        ), in: 0...max(0, item.totalEpisodes))
+                    }
+
+                    Button(role: .destructive) {
+                        store.remove(item)
+                    } label: {
+                        Label("Remove from Together", systemImage: "heart.slash")
+                    }
+                } else {
+                    Button {
+                        store.addTogether(result: result, details: details)
+                    } label: {
+                        Label("Add to Watch Together", systemImage: "heart")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+
+    private func sendSuggestion() {
+        guard let toUid = session.partnerUid, let fromUid = session.uid else { return }
+        suggestions.send(result: result, toUid: toUid, fromUid: fromUid,
+                         fromName: session.myName, message: "")
+        didSuggest = true
     }
 
     private var header: some View {

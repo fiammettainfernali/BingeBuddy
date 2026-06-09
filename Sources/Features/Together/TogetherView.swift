@@ -3,9 +3,10 @@ import SwiftUI
 struct TogetherView: View {
     @EnvironmentObject private var store: LibraryStore
     @EnvironmentObject private var session: Session
-    @State private var segment: Segment = .matches
+    @State private var segment: Segment = .shared
 
     enum Segment: String, CaseIterable, Identifiable {
+        case shared = "Shared"
         case matches = "Matches"
         case partner = "Partner"
         var id: String { rawValue }
@@ -33,6 +34,7 @@ struct TogetherView: View {
                         .padding([.horizontal, .top])
 
                         switch segment {
+                        case .shared: sharedList
                         case .matches: matchesList
                         case .partner: partnerList
                         }
@@ -46,8 +48,26 @@ struct TogetherView: View {
 
     private func label(for segment: Segment) -> String {
         switch segment {
+        case .shared: return "Shared"
         case .matches: return "Matches"
         case .partner: return session.partnerName ?? "Partner"
+        }
+    }
+
+    @ViewBuilder private var sharedList: some View {
+        let items = store.togetherItems.sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
+        if items.isEmpty {
+            ContentUnavailableView(
+                "No shared titles yet",
+                systemImage: "heart",
+                description: Text("Open any title and tap “Add to Watch Together” to start a shared list you both control."))
+        } else {
+            List(items) { item in
+                NavigationLink(value: item.asSearchResult) {
+                    ItemRow(item: item, subtitle: statusLine(item))
+                }
+            }
+            .listStyle(.plain)
         }
     }
 

@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Phase 0 shell: the five tabs that will hold the real features.
-/// Each tab is a placeholder for now — we're proving the build pipeline first.
+/// The five main tabs of the app.
 struct RootView: View {
     @EnvironmentObject private var session: Session
     @EnvironmentObject private var library: LibraryStore
+    @EnvironmentObject private var suggestions: SuggestionStore
 
     private var configKey: String { "\(session.uid ?? "")|\(session.household?.id ?? "")" }
 
@@ -19,47 +19,17 @@ struct RootView: View {
             TogetherView()
                 .tabItem { Label("Together", systemImage: "heart.fill") }
 
-            PlaceholderTab(
-                title: "Inbox",
-                systemImage: "tray.fill",
-                message: "Show ideas your partner sends you."
-            )
-            .tabItem { Label("Inbox", systemImage: "tray.fill") }
+            InboxView()
+                .tabItem { Label("Inbox", systemImage: "tray.fill") }
+                .badge(suggestions.pendingCount)
 
             ProfileView()
                 .tabItem { Label("Profile", systemImage: "person.crop.circle.fill") }
         }
         .task(id: configKey) {
             library.configure(householdId: session.household?.id, uid: session.uid)
+            suggestions.configure(householdId: session.household?.id, uid: session.uid)
         }
     }
 }
 
-private struct PlaceholderTab: View {
-    let title: String
-    let systemImage: String
-    let message: String
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 56))
-                    .foregroundStyle(.tint)
-                Text(message)
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 40)
-                Text("Coming soon")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .navigationTitle(title)
-        }
-    }
-}
-
-#Preview {
-    RootView()
-}

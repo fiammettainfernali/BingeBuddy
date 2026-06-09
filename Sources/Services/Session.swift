@@ -36,6 +36,11 @@ final class Session: ObservableObject {
         return nil
     }
 
+    var partnerUid: String? {
+        guard let uid, let household else { return nil }
+        return household.memberUids.first { $0 != uid }
+    }
+
     // MARK: - Lifecycle
 
     func bootstrap() async {

@@ -7,6 +7,7 @@ struct BingeBuddyApp: App {
     let container: ModelContainer
     @StateObject private var session = Session()
     @StateObject private var library = LibraryStore()
+    @StateObject private var suggestions = SuggestionStore()
 
     init() {
         FirebaseApp.configure()
@@ -24,6 +25,7 @@ struct BingeBuddyApp: App {
             RootView()
                 .environmentObject(session)
                 .environmentObject(library)
+                .environmentObject(suggestions)
                 .task { await session.bootstrap() }
         }
         .modelContainer(container)

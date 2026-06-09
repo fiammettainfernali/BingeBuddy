@@ -63,6 +63,11 @@ final class LibraryStore: ObservableObject {
         return allItems.filter { $0.ownerUid != uid && $0.scope == "personal" }
     }
 
+    /// The shared "watch together" list (one copy, both can edit).
+    var togetherItems: [LibraryItem] {
+        allItems.filter { $0.scope == "together" }
+    }
+
     /// Titles on BOTH want-to-watch lists — "what should we watch together?"
     var matches: [LibraryItem] {
         let mineWant = Set(myPersonal.filter { $0.state == .wantToWatch }.map(\.mediaKey))
@@ -99,6 +104,10 @@ final class LibraryStore: ObservableObject {
         myPersonal.first { $0.mediaKey == mediaKey }
     }
 
+    func togetherItem(forKey mediaKey: String) -> LibraryItem? {
+        togetherItems.first { $0.mediaKey == mediaKey }
+    }
+
     // MARK: - Mutations (operate on my personal library)
 
     func add(result: MediaSearchResult, state: WatchState, details: MediaDetails?) {
@@ -111,6 +120,37 @@ final class LibraryStore: ObservableObject {
             "title": result.title,
             "mediaTypeRaw": result.mediaType.rawValue,
             "stateRaw": state.rawValue,
+            "overview": result.overview,
+            "rating": 0,
+            "currentSeason": 1,
+            "currentEpisode": 0,
+            "totalSeasons": details?.totalSeasons ?? 0,
+            "totalEpisodes": details?.totalEpisodes ?? 0,
+            "genres": details?.genres ?? [],
+            "source": result.source,
+            "sourceId": result.sourceId,
+            "note": "",
+            "addedAt": FieldValue.serverTimestamp(),
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        if let poster = result.posterURL { data["posterURL"] = poster }
+        if let year = result.year { data["year"] = year }
+
+        db.collection("households").document(householdId)
+            .collection("items").document(docId).setData(data, merge: true)
+    }
+
+    func addTogether(result: MediaSearchResult, details: MediaDetails?) {
+        guard let householdId, let uid,
+              !togetherItems.contains(where: { $0.mediaKey == result.id }) else { return }
+        let docId = "together__\(result.id)"
+        var data: [String: Any] = [
+            "ownerUid": uid,
+            "scope": "together",
+            "mediaKey": result.id,
+            "title": result.title,
+            "mediaTypeRaw": result.mediaType.rawValue,
+            "stateRaw": WatchState.wantToWatch.rawValue,
             "overview": result.overview,
             "rating": 0,
             "currentSeason": 1,
