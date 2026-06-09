@@ -39,17 +39,40 @@ struct LibraryItem: Codable, Identifiable {
     }
 }
 
-/// Live, syncing view of the signed-in user's personal library.
+/// Live, syncing view of the whole household's library (both members + shared items).
 @MainActor
 final class LibraryStore: ObservableObject {
-    @Published var items: [LibraryItem] = []
+    @Published var allItems: [LibraryItem] = []
 
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
     private var householdId: String?
     private var uid: String?
 
-    /// Re-subscribe whenever the household or user changes.
+    // MARK: - Derived slices
+
+    /// My own personal library.
+    var myPersonal: [LibraryItem] {
+        guard let uid else { return [] }
+        return allItems.filter { $0.ownerUid == uid && $0.scope == "personal" }
+    }
+
+    /// My partner's personal library (read-only "her portal").
+    var partnerPersonal: [LibraryItem] {
+        guard let uid else { return [] }
+        return allItems.filter { $0.ownerUid != uid && $0.scope == "personal" }
+    }
+
+    /// Titles on BOTH want-to-watch lists — "what should we watch together?"
+    var matches: [LibraryItem] {
+        let mineWant = Set(myPersonal.filter { $0.state == .wantToWatch }.map(\.mediaKey))
+        let theirsWant = Set(partnerPersonal.filter { $0.state == .wantToWatch }.map(\.mediaKey))
+        let common = mineWant.intersection(theirsWant)
+        return myPersonal.filter { common.contains($0.mediaKey) }
+    }
+
+    // MARK: - Lifecycle
+
     func configure(householdId: String?, uid: String?) {
         guard householdId != self.householdId || uid != self.uid else { return }
         self.householdId = householdId
@@ -59,25 +82,24 @@ final class LibraryStore: ObservableObject {
 
     private func subscribe() {
         listener?.remove()
-        items = []
-        guard let householdId, let uid else { return }
+        allItems = []
+        guard let householdId else { return }
         listener = db.collection("households").document(householdId).collection("items")
-            .whereField("ownerUid", isEqualTo: uid)
             .addSnapshotListener { [weak self] snapshot, _ in
                 guard let self, let snapshot else { return }
-                self.items = snapshot.documents.compactMap { try? $0.data(as: LibraryItem.self) }
+                self.allItems = snapshot.documents.compactMap { try? $0.data(as: LibraryItem.self) }
             }
     }
 
     func contains(mediaKey: String) -> Bool {
-        items.contains { $0.mediaKey == mediaKey }
+        myPersonal.contains { $0.mediaKey == mediaKey }
     }
 
     func item(forKey mediaKey: String) -> LibraryItem? {
-        items.first { $0.mediaKey == mediaKey }
+        myPersonal.first { $0.mediaKey == mediaKey }
     }
 
-    // MARK: - Mutations
+    // MARK: - Mutations (operate on my personal library)
 
     func add(result: MediaSearchResult, state: WatchState, details: MediaDetails?) {
         guard let householdId, let uid, !contains(mediaKey: result.id) else { return }

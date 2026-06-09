@@ -20,7 +20,7 @@ struct LibraryView: View {
     @State private var searchText = ""
 
     private var personalItems: [LibraryItem] {
-        store.items.filter { $0.scope == "personal" }
+        store.myPersonal
     }
 
     private var availableGenres: [String] {

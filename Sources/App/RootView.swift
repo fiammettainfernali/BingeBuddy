@@ -16,12 +16,8 @@ struct RootView: View {
             SearchView()
                 .tabItem { Label("Search", systemImage: "magnifyingglass") }
 
-            PlaceholderTab(
-                title: "Together",
-                systemImage: "heart.fill",
-                message: "Stuff you watch as a couple — and your match list."
-            )
-            .tabItem { Label("Together", systemImage: "heart.fill") }
+            TogetherView()
+                .tabItem { Label("Together", systemImage: "heart.fill") }
 
             PlaceholderTab(
                 title: "Inbox",
