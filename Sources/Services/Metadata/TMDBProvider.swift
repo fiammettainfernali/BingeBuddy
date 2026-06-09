@@ -94,6 +94,34 @@ struct TMDBProvider: MediaProvider, Sendable {
                                      overview: item.overview ?? "")
         }
     }
+
+    func trending() async throws -> [MediaSearchResult] {
+        let response: TMDBSearchResponse = try await get("/trending/all/week")
+        return response.results.compactMap { item in
+            guard let type = item.mediaTypeEnum else { return nil }
+            let title = item.title ?? item.name ?? "Untitled"
+            let date = item.release_date ?? item.first_air_date
+            let year = date?.split(separator: "-").first.map(String.init)
+            let poster = item.poster_path.map { imageBase + $0 }
+            return MediaSearchResult(source: "tmdb", sourceId: String(item.id), title: title,
+                                     mediaType: type, year: year, posterURL: poster,
+                                     overview: item.overview ?? "")
+        }
+    }
+
+    func popular(mediaType: MediaType) async throws -> [MediaSearchResult] {
+        let path = mediaType == .tv ? "/tv/popular" : "/movie/popular"
+        let response: TMDBSearchResponse = try await get(path)
+        return response.results.map { item in
+            let title = item.title ?? item.name ?? "Untitled"
+            let date = item.release_date ?? item.first_air_date
+            let year = date?.split(separator: "-").first.map(String.init)
+            let poster = item.poster_path.map { imageBase + $0 }
+            return MediaSearchResult(source: "tmdb", sourceId: String(item.id), title: title,
+                                     mediaType: mediaType, year: year, posterURL: poster,
+                                     overview: item.overview ?? "")
+        }
+    }
 }
 
 // MARK: - TMDB DTOs

@@ -25,4 +25,18 @@ struct MetadataService: Sendable {
         default: return try await tmdb.recommendations(sourceId: result.sourceId, mediaType: result.mediaType)
         }
     }
+
+    func trending(scope: SearchScope) async throws -> [MediaSearchResult] {
+        switch scope {
+        case .moviesTV: return try await tmdb.trending()
+        case .anime: return try await anilist.trending()
+        }
+    }
+
+    func popular(scope: SearchScope) async throws -> [MediaSearchResult] {
+        switch scope {
+        case .moviesTV: return try await tmdb.popular(mediaType: .movie)
+        case .anime: return try await anilist.popular()
+        }
+    }
 }

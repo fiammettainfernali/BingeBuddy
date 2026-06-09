@@ -45,15 +45,7 @@ struct SearchView: View {
                                    description: Text(errorMessage))
         } else if results.isEmpty {
             if query.trimmingCharacters(in: .whitespaces).isEmpty {
-                if session.household != nil && !store.mySeeds.isEmpty {
-                    RecommendationsView(title: "For You",
-                                        seeds: store.mySeeds,
-                                        exclude: store.myExclusion)
-                } else {
-                    ContentUnavailableView("Find something to watch",
-                                           systemImage: "magnifyingglass",
-                                           description: Text("Search movies, TV, and anime."))
-                }
+                BrowseView(scope: scope)
             } else {
                 ContentUnavailableView("No results",
                                        systemImage: "magnifyingglass",

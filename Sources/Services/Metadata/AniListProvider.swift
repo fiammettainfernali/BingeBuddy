@@ -92,6 +92,33 @@ struct AniListProvider: MediaProvider, Sendable {
             query: gql, variables: ["id": Int(sourceId) ?? 0])
         return response.data.Media.recommendations.nodes.compactMap { $0.mediaRecommendation?.asSearchResult }
     }
+
+    func trending() async throws -> [MediaSearchResult] {
+        try await page(sort: "TRENDING_DESC")
+    }
+
+    func popular() async throws -> [MediaSearchResult] {
+        try await page(sort: "POPULARITY_DESC")
+    }
+
+    private func page(sort: String) async throws -> [MediaSearchResult] {
+        let gql = """
+        query {
+          Page(perPage: 25) {
+            media(sort: \(sort), type: ANIME) {
+              id
+              title { romaji english }
+              coverImage { large }
+              seasonYear
+              description(asHtml: false)
+              episodes
+            }
+          }
+        }
+        """
+        let response: AniListSearchResponse = try await post(query: gql, variables: [:])
+        return response.data.Page.media.map { $0.asSearchResult }
+    }
 }
 
 // MARK: - AniList DTOs
