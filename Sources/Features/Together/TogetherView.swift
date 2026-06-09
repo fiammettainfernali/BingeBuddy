@@ -55,19 +55,41 @@ struct TogetherView: View {
     }
 
     @ViewBuilder private var sharedList: some View {
-        let items = store.togetherItems.sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
-        if items.isEmpty {
+        let all = store.togetherItems
+        let active = all
+            .filter { $0.state == .wantToWatch || $0.state == .watching }
+            .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
+        let done = all
+            .filter { $0.state == .finished || $0.state == .dropped }
+            .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
+
+        if all.isEmpty {
             ContentUnavailableView(
                 "No shared titles yet",
                 systemImage: "heart",
                 description: Text("Open any title and tap “Add to Watch Together” to start a shared list you both control."))
         } else {
-            List(items) { item in
-                NavigationLink(value: item.asSearchResult) {
-                    ItemRow(item: item, subtitle: statusLine(item))
+            List {
+                if !active.isEmpty {
+                    Section("Up next") {
+                        ForEach(active) { item in
+                            NavigationLink(value: item.asSearchResult) {
+                                ItemRow(item: item, subtitle: statusLine(item))
+                            }
+                        }
+                    }
+                }
+                if !done.isEmpty {
+                    Section("Finished & dropped") {
+                        ForEach(done) { item in
+                            NavigationLink(value: item.asSearchResult) {
+                                ItemRow(item: item, subtitle: statusLine(item))
+                            }
+                        }
+                    }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
         }
     }
 
