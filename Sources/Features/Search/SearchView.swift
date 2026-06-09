@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SearchView: View {
     @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var session: Session
     @State private var query = ""
     @State private var scope: SearchScope = .moviesTV
     @State private var results: [MediaSearchResult] = []
@@ -43,9 +44,21 @@ struct SearchView: View {
                                    systemImage: "wifi.exclamationmark",
                                    description: Text(errorMessage))
         } else if results.isEmpty {
-            ContentUnavailableView("Find something to watch",
-                                   systemImage: "magnifyingglass",
-                                   description: Text("Search movies, TV, and anime."))
+            if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                if session.household != nil && !store.mySeeds.isEmpty {
+                    RecommendationsView(title: "For You",
+                                        seeds: store.mySeeds,
+                                        exclude: store.myExclusion)
+                } else {
+                    ContentUnavailableView("Find something to watch",
+                                           systemImage: "magnifyingglass",
+                                           description: Text("Search movies, TV, and anime."))
+                }
+            } else {
+                ContentUnavailableView("No results",
+                                       systemImage: "magnifyingglass",
+                                       description: Text("Try a different title."))
+            }
         } else {
             List(results) { result in
                 NavigationLink(value: result) {

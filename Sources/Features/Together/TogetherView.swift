@@ -9,6 +9,7 @@ struct TogetherView: View {
         case shared = "Shared"
         case matches = "Matches"
         case partner = "Partner"
+        case forUs = "For Us"
         var id: String { rawValue }
     }
 
@@ -37,6 +38,10 @@ struct TogetherView: View {
                         case .shared: sharedList
                         case .matches: matchesList
                         case .partner: partnerList
+                        case .forUs:
+                            RecommendationsView(title: "For Us",
+                                                seeds: store.ourSeeds,
+                                                exclude: store.householdExclusion)
                         }
                     }
                 }
@@ -51,6 +56,7 @@ struct TogetherView: View {
         case .shared: return "Shared"
         case .matches: return "Matches"
         case .partner: return session.partnerName ?? "Partner"
+        case .forUs: return "For Us"
         }
     }
 

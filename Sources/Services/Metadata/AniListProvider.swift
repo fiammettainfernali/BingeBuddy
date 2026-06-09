@@ -1,7 +1,7 @@
 import Foundation
 
 /// Anime via the AniList GraphQL API (no key required).
-struct AniListProvider: MediaProvider {
+struct AniListProvider: MediaProvider, Sendable {
     private let endpoint = URL(string: "https://graphql.anilist.co")!
 
     private func post<T: Decodable>(query: String, variables: [String: Any]) async throws -> T {
@@ -68,9 +68,39 @@ struct AniListProvider: MediaProvider {
             genres: media.genres ?? [],
             seasons: seasons)
     }
+
+    func recommendations(sourceId: String) async throws -> [MediaSearchResult] {
+        let gql = """
+        query ($id: Int) {
+          Media(id: $id, type: ANIME) {
+            recommendations(sort: RATING_DESC, perPage: 15) {
+              nodes {
+                mediaRecommendation {
+                  id
+                  title { romaji english }
+                  coverImage { large }
+                  seasonYear
+                  description(asHtml: false)
+                  episodes
+                }
+              }
+            }
+          }
+        }
+        """
+        let response: AniListRecResponse = try await post(
+            query: gql, variables: ["id": Int(sourceId) ?? 0])
+        return response.data.Media.recommendations.nodes.compactMap { $0.mediaRecommendation?.asSearchResult }
+    }
 }
 
 // MARK: - AniList DTOs
+
+private struct AniListRecNode: Decodable { let mediaRecommendation: AniListMedia? }
+private struct AniListRecommendations: Decodable { let nodes: [AniListRecNode] }
+private struct AniListRecMedia: Decodable { let recommendations: AniListRecommendations }
+private struct AniListRecData: Decodable { let Media: AniListRecMedia }
+private struct AniListRecResponse: Decodable { let data: AniListRecData }
 
 private struct AniListTitle: Decodable {
     let romaji: String?

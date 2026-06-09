@@ -1,7 +1,7 @@
 import Foundation
 
 /// Routes search/detail requests to the right provider and normalizes the results.
-struct MetadataService {
+struct MetadataService: Sendable {
     private let tmdb = TMDBProvider()
     private let anilist = AniListProvider()
 
@@ -16,6 +16,13 @@ struct MetadataService {
         switch result.source {
         case "anilist": return try await anilist.details(sourceId: result.sourceId, mediaType: .anime)
         default: return try await tmdb.details(sourceId: result.sourceId, mediaType: result.mediaType)
+        }
+    }
+
+    func recommendations(for result: MediaSearchResult) async throws -> [MediaSearchResult] {
+        switch result.source {
+        case "anilist": return try await anilist.recommendations(sourceId: result.sourceId)
+        default: return try await tmdb.recommendations(sourceId: result.sourceId, mediaType: result.mediaType)
         }
     }
 }

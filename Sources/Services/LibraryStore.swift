@@ -76,6 +76,27 @@ final class LibraryStore: ObservableObject {
         return myPersonal.filter { common.contains($0.mediaKey) }
     }
 
+    // MARK: - Recommendation seeds / exclusions
+
+    private func seeds(from items: [LibraryItem]) -> [LibraryItem] {
+        items.filter { $0.state == .finished || $0.rating >= 4 }
+            .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
+    }
+
+    /// What to base my personal "For You" picks on.
+    var mySeeds: [LibraryItem] { seeds(from: myPersonal) }
+
+    /// What to base couple "For Us" picks on.
+    var ourSeeds: [LibraryItem] { seeds(from: myPersonal + partnerPersonal) }
+
+    /// Don't recommend things I already track.
+    var myExclusion: Set<String> { Set(myPersonal.map(\.mediaKey)) }
+
+    /// Don't recommend anything already in the household.
+    var householdExclusion: Set<String> {
+        Set((myPersonal + partnerPersonal + togetherItems).map(\.mediaKey))
+    }
+
     // MARK: - Lifecycle
 
     func configure(householdId: String?, uid: String?) {
