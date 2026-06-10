@@ -194,14 +194,7 @@ private struct VaultItemDetail: View {
                     Text("Status").font(.headline)
                     Picker("Status", selection: Binding(
                         get: { item.state },
-                        set: { newValue in
-                            item.state = newValue
-                            if newValue == .finished && item.totalEpisodes > 0 {
-                                item.currentEpisode = item.totalEpisodes
-                                if item.totalSeasons > 0 { item.currentSeason = item.totalSeasons }
-                            }
-                            touch()
-                        }
+                        set: { item.state = $0; touch() }
                     )) {
                         ForEach(WatchState.allCases) { Text($0.label).tag($0) }
                     }
@@ -219,7 +212,7 @@ private struct VaultItemDetail: View {
                     }
                 }
 
-                if item.totalEpisodes > 0 {
+                if item.state == .watching && item.totalEpisodes > 0 {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Progress").font(.headline)
                         Stepper("Season \(item.currentSeason)", value: Binding(

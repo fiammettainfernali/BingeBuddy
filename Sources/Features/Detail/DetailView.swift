@@ -56,13 +56,13 @@ struct DetailView: View {
                 if let item = togetherItem {
                     Picker("Status", selection: Binding(
                         get: { item.state },
-                        set: { setStatus($0, for: item) }
+                        set: { store.setState(item, to: $0) }
                     )) {
                         ForEach(WatchState.allCases) { Text($0.label).tag($0) }
                     }
                     .pickerStyle(.segmented)
 
-                    if item.totalEpisodes > 0 {
+                    if item.state == .watching && item.totalEpisodes > 0 {
                         Stepper("Season \(item.currentSeason)", value: Binding(
                             get: { item.currentSeason },
                             set: { store.setProgress(item, season: max(1, $0), episode: item.currentEpisode) }
@@ -160,7 +160,7 @@ struct DetailView: View {
                 StarRating(rating: item.rating) { store.setRating(item, to: $0) }
             }
 
-            if item.totalEpisodes > 0 {
+            if item.state == .watching && item.totalEpisodes > 0 {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Progress").font(.headline)
                     Stepper("Season \(item.currentSeason)", value: Binding(
@@ -189,27 +189,6 @@ struct DetailView: View {
                 Text(result.overview).font(.body).foregroundStyle(.secondary)
             }
         }
-    }
-
-    private func setStatus(_ newState: WatchState, for item: LibraryItem) {
-        store.setState(item, to: newState)
-        guard newState == .finished else { return }
-        Task { await maxOutProgress(for: item) }
-    }
-
-    /// Fill episode/season progress to the end, fetching the episode count if it isn't loaded yet.
-    private func maxOutProgress(for item: LibraryItem) async {
-        let loaded: MediaDetails?
-        if let details {
-            loaded = details
-        } else {
-            loaded = try? await service.details(for: result)
-        }
-        let episodes = max(item.totalEpisodes, loaded?.totalEpisodes ?? 0)
-        let seasons = max(item.totalSeasons, loaded?.totalSeasons ?? 0)
-        guard episodes > 0 else { return }
-        if let loaded { store.backfill(item, with: loaded) }
-        store.setProgress(item, season: max(seasons, 1), episode: episodes)
     }
 
     private func loadDetails() async {

@@ -232,13 +232,7 @@ final class LibraryStore: ObservableObject {
     }
 
     func setState(_ item: LibraryItem, to state: WatchState) {
-        var fields: [String: Any] = ["stateRaw": state.rawValue]
-        // Finishing a series fills progress to the end so you don't tap through every episode.
-        if state == .finished && item.totalEpisodes > 0 {
-            fields["currentEpisode"] = item.totalEpisodes
-            if item.totalSeasons > 0 { fields["currentSeason"] = item.totalSeasons }
-        }
-        update(item, fields)
+        update(item, ["stateRaw": state.rawValue])
     }
 
     func setRating(_ item: LibraryItem, to rating: Int) {
