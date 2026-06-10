@@ -148,7 +148,7 @@ struct DetailView: View {
                 Text("Status").font(.headline)
                 Picker("Status", selection: Binding(
                     get: { item.state },
-                    set: { setStatus($0, for: item) }
+                    set: { store.setState(item, to: $0) }
                 )) {
                     ForEach(WatchState.allCases) { Text($0.label).tag($0) }
                 }
