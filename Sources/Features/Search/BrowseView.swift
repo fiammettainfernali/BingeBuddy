@@ -12,13 +12,15 @@ struct BrowseView: View {
     @State private var trending: [MediaSearchResult] = []
     @State private var popular: [MediaSearchResult] = []
     @State private var isLoading = true
-    @State private var loadedKey: String?
+    @State private var loadedScope: SearchScope?
+    @State private var loadedSeedKey: String?
 
     private let service = MetadataService()
     private let engine = RecommendationEngine()
 
+    /// For You depends only on your library (not the current scope).
     private var seedKey: String {
-        scope.rawValue + "|" + store.mySeeds.map(\.mediaKey).sorted().joined()
+        store.mySeeds.map(\.mediaKey).sorted().joined(separator: ",")
     }
 
     var body: some View {
@@ -41,41 +43,37 @@ struct BrowseView: View {
                 .padding(.vertical)
             }
         }
-        // Load on first appear, and whenever the scope or your library changes — but NOT on a
-        // plain navigation-back (same key), so scroll position is preserved.
+        // Trending/Popular reload only when the scope changes; For You reloads when your library
+        // changes. Neither reloads on a plain navigation-back, preserving scroll.
         .task {
-            guard loadedKey != seedKey else { return }
-            await load()
-            loadedKey = seedKey
+            if loadedScope != scope { await loadTrendingPopular(); loadedScope = scope }
+            if loadedSeedKey != seedKey { await loadForYou(); loadedSeedKey = seedKey }
+        }
+        .onChange(of: scope) { _, newScope in
+            Task { await loadTrendingPopular(); loadedScope = newScope }
         }
         .onChange(of: seedKey) { _, newKey in
-            Task {
-                await load()
-                loadedKey = newKey
-            }
+            Task { await loadForYou(); loadedSeedKey = newKey }
         }
     }
 
-    private func load() async {
-        // Only show the spinner on the very first load; on refreshes keep the current covers
-        // visible and swap them in when the new data arrives.
-        if forYou.isEmpty && trending.isEmpty && popular.isEmpty { isLoading = true }
-
-        async let trendingTask = service.trending(scope: scope)
-        async let popularTask = service.popular(scope: scope)
-        let newTrending = await trendingTask
-        let newPopular = await popularTask
-
-        var newForYou: [MediaSearchResult] = []
-        if session.household != nil && !store.mySeeds.isEmpty {
-            let recs = await engine.recommendations(seeds: store.mySeeds, exclude: store.myExclusion, limit: 40)
-            newForYou = recs.map(\.result)
-        }
-
-        trending = newTrending
-        popular = newPopular
-        forYou = newForYou
+    private func loadTrendingPopular() async {
+        isLoading = true
+        trending = await service.trending(scope: scope)
+        popular = await service.popular(scope: scope)
         isLoading = false
+    }
+
+    private func loadForYou() async {
+        guard session.household != nil, !store.mySeeds.isEmpty else {
+            forYou = []
+            return
+        }
+        let recs = await engine.recommendations(seeds: store.mySeeds, exclude: store.myExclusion, limit: 40)
+        // Don't wipe existing picks if a refresh came back empty (e.g. a rate-limit hiccup).
+        if !recs.isEmpty || forYou.isEmpty {
+            forYou = recs.map(\.result)
+        }
     }
 
     private func hideForYou(_ item: MediaSearchResult) {

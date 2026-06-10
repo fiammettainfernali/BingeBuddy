@@ -113,7 +113,11 @@ struct RecommendationsView: View {
 
     private func load() async {
         if recommendations.isEmpty { isLoading = true }
-        recommendations = await engine.recommendations(seeds: seeds, exclude: exclude)
+        let recs = await engine.recommendations(seeds: seeds, exclude: exclude)
+        // Keep existing picks if a refresh returned empty (e.g. a rate-limit hiccup).
+        if !recs.isEmpty || recommendations.isEmpty {
+            recommendations = recs
+        }
         isLoading = false
     }
 }
