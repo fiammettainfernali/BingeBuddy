@@ -12,6 +12,7 @@ struct BrowseView: View {
     @State private var trending: [MediaSearchResult] = []
     @State private var popular: [MediaSearchResult] = []
     @State private var isLoading = true
+    @State private var loadedKey: String?
 
     private let service = MetadataService()
     private let engine = RecommendationEngine()
@@ -40,13 +41,19 @@ struct BrowseView: View {
                 .padding(.vertical)
             }
         }
-        .task(id: seedKey) { await load() }
+        // Only (re)load when the scope or your library actually changes — not every time you
+        // come back from a detail screen — so scroll position is preserved.
+        .task {
+            guard loadedKey != seedKey else { return }
+            await load()
+            loadedKey = seedKey
+        }
     }
 
     private func load() async {
         isLoading = true
-        async let trendingTask = (try? await service.trending(scope: scope)) ?? []
-        async let popularTask = (try? await service.popular(scope: scope)) ?? []
+        async let trendingTask = service.trending(scope: scope)
+        async let popularTask = service.popular(scope: scope)
         trending = await trendingTask
         popular = await popularTask
 

@@ -59,9 +59,12 @@ struct RecommendationsView: View {
 
     @State private var recommendations: [Recommendation] = []
     @State private var isLoading = true
+    @State private var loadedKey: String?
 
     private let engine = RecommendationEngine()
-    private var seedKey: String { title + seeds.map(\.mediaKey).sorted().joined(separator: ",") }
+    private var seedKey: String {
+        title + seeds.map(\.mediaKey).sorted().joined(separator: ",") + "|\(exclude.count)"
+    }
 
     var body: some View {
         Group {
@@ -84,7 +87,11 @@ struct RecommendationsView: View {
                 .listStyle(.insetGrouped)
             }
         }
-        .task(id: seedKey) { await load() }
+        .task {
+            guard loadedKey != seedKey else { return }
+            await load()
+            loadedKey = seedKey
+        }
     }
 
     private func load() async {

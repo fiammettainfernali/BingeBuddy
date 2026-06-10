@@ -95,8 +95,9 @@ struct TMDBProvider: MediaProvider, Sendable {
         }
     }
 
-    func trending() async throws -> [MediaSearchResult] {
-        let response: TMDBSearchResponse = try await get("/trending/all/week")
+    func trending(page: Int = 1) async throws -> [MediaSearchResult] {
+        let response: TMDBSearchResponse = try await get("/trending/all/week",
+            query: [URLQueryItem(name: "page", value: String(page))])
         return response.results.compactMap { item in
             guard let type = item.mediaTypeEnum else { return nil }
             let title = item.title ?? item.name ?? "Untitled"
@@ -109,9 +110,10 @@ struct TMDBProvider: MediaProvider, Sendable {
         }
     }
 
-    func popular(mediaType: MediaType) async throws -> [MediaSearchResult] {
+    func popular(mediaType: MediaType, page: Int = 1) async throws -> [MediaSearchResult] {
         let path = mediaType == .tv ? "/tv/popular" : "/movie/popular"
-        let response: TMDBSearchResponse = try await get(path)
+        let response: TMDBSearchResponse = try await get(path,
+            query: [URLQueryItem(name: "page", value: String(page))])
         return response.results.map { item in
             let title = item.title ?? item.name ?? "Untitled"
             let date = item.release_date ?? item.first_air_date

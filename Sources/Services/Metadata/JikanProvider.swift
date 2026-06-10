@@ -47,18 +47,18 @@ struct JikanProvider: Sendable {
         return response.data.prefix(20).map { $0.entry.asSearchResult }
     }
 
-    func trending() async throws -> [MediaSearchResult] {
+    func trending(page: Int = 1) async throws -> [MediaSearchResult] {
         let response: JikanListResponse = try await get("/seasons/now", query: [
-            URLQueryItem(name: "limit", value: "25"),
+            URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "sfw", value: "true")
         ])
         return response.data.map { $0.asSearchResult }
     }
 
-    func popular() async throws -> [MediaSearchResult] {
+    func popular(page: Int = 1) async throws -> [MediaSearchResult] {
         let response: JikanListResponse = try await get("/top/anime", query: [
             URLQueryItem(name: "filter", value: "bypopularity"),
-            URLQueryItem(name: "limit", value: "25"),
+            URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "sfw", value: "true")
         ])
         return response.data.map { $0.asSearchResult }

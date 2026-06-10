@@ -78,9 +78,26 @@ final class LibraryStore: ObservableObject {
 
     // MARK: - Recommendation seeds / exclusions
 
+    /// Rank a title's strength as a taste signal (higher = stronger).
+    private func seedWeight(_ item: LibraryItem) -> Int {
+        var weight = item.rating
+        switch item.state {
+        case .finished: weight += 3
+        case .watching: weight += 2
+        case .wantToWatch: weight += 1
+        case .dropped: weight -= 10
+        }
+        return weight
+    }
+
+    /// All non-dropped titles, strongest taste signals first.
     private func seeds(from items: [LibraryItem]) -> [LibraryItem] {
-        items.filter { $0.state == .finished || $0.rating >= 4 }
-            .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
+        items.filter { $0.state != .dropped }
+            .sorted {
+                let lhs = seedWeight($0), rhs = seedWeight($1)
+                if lhs != rhs { return lhs > rhs }
+                return ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast)
+            }
     }
 
     /// What to base my personal "For You" picks on.
@@ -193,7 +210,13 @@ final class LibraryStore: ObservableObject {
     }
 
     func setState(_ item: LibraryItem, to state: WatchState) {
-        update(item, ["stateRaw": state.rawValue])
+        var fields: [String: Any] = ["stateRaw": state.rawValue]
+        // Finishing a series fills progress to the end so you don't tap through every episode.
+        if state == .finished && item.totalEpisodes > 0 {
+            fields["currentEpisode"] = item.totalEpisodes
+            if item.totalSeasons > 0 { fields["currentSeason"] = item.totalSeasons }
+        }
+        update(item, fields)
     }
 
     func setRating(_ item: LibraryItem, to rating: Int) {

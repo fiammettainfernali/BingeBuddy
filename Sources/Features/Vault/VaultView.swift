@@ -194,7 +194,14 @@ private struct VaultItemDetail: View {
                     Text("Status").font(.headline)
                     Picker("Status", selection: Binding(
                         get: { item.state },
-                        set: { item.state = $0; touch() }
+                        set: { newValue in
+                            item.state = newValue
+                            if newValue == .finished && item.totalEpisodes > 0 {
+                                item.currentEpisode = item.totalEpisodes
+                                if item.totalSeasons > 0 { item.currentSeason = item.totalSeasons }
+                            }
+                            touch()
+                        }
                     )) {
                         ForEach(WatchState.allCases) { Text($0.label).tag($0) }
                     }

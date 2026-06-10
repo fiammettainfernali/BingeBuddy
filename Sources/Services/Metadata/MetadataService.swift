@@ -29,17 +29,33 @@ struct MetadataService: Sendable {
         }
     }
 
-    func trending(scope: SearchScope) async throws -> [MediaSearchResult] {
-        switch scope {
-        case .moviesTV: return try await tmdb.trending()
-        case .anime: return try await jikan.trending()
+    func trending(scope: SearchScope) async -> [MediaSearchResult] {
+        await collect(pages: scope == .anime ? 2 : 3) { page in
+            switch scope {
+            case .moviesTV: return (try? await tmdb.trending(page: page)) ?? []
+            case .anime: return (try? await jikan.trending(page: page)) ?? []
+            }
         }
     }
 
-    func popular(scope: SearchScope) async throws -> [MediaSearchResult] {
-        switch scope {
-        case .moviesTV: return try await tmdb.popular(mediaType: .movie)
-        case .anime: return try await jikan.popular()
+    func popular(scope: SearchScope) async -> [MediaSearchResult] {
+        await collect(pages: scope == .anime ? 2 : 3) { page in
+            switch scope {
+            case .moviesTV: return (try? await tmdb.popular(mediaType: .movie, page: page)) ?? []
+            case .anime: return (try? await jikan.popular(page: page)) ?? []
+            }
         }
+    }
+
+    /// Fetch several pages in order and concatenate, dropping duplicates.
+    private func collect(pages: Int, _ fetch: (Int) async -> [MediaSearchResult]) async -> [MediaSearchResult] {
+        var all: [MediaSearchResult] = []
+        var seen = Set<String>()
+        for page in 1...pages {
+            let items = await fetch(page)
+            if items.isEmpty { break }
+            for item in items where seen.insert(item.id).inserted { all.append(item) }
+        }
+        return all
     }
 }
