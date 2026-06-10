@@ -57,18 +57,24 @@ struct BrowseView: View {
     }
 
     private func load() async {
-        isLoading = true
+        // Only show the spinner on the very first load; on refreshes keep the current covers
+        // visible and swap them in when the new data arrives.
+        if forYou.isEmpty && trending.isEmpty && popular.isEmpty { isLoading = true }
+
         async let trendingTask = service.trending(scope: scope)
         async let popularTask = service.popular(scope: scope)
-        trending = await trendingTask
-        popular = await popularTask
+        let newTrending = await trendingTask
+        let newPopular = await popularTask
 
+        var newForYou: [MediaSearchResult] = []
         if session.household != nil && !store.mySeeds.isEmpty {
             let recs = await engine.recommendations(seeds: store.mySeeds, exclude: store.myExclusion, limit: 40)
-            forYou = recs.map(\.result)
-        } else {
-            forYou = []
+            newForYou = recs.map(\.result)
         }
+
+        trending = newTrending
+        popular = newPopular
+        forYou = newForYou
         isLoading = false
     }
 

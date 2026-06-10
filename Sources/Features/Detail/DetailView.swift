@@ -194,11 +194,16 @@ struct DetailView: View {
     private func setStatus(_ newState: WatchState, for item: LibraryItem) {
         store.setState(item, to: newState)
         guard newState == .finished else { return }
-        // Max progress on finish, falling back to freshly-loaded details if stored totals are missing.
-        let episodes = max(item.totalEpisodes, details?.totalEpisodes ?? 0)
-        let seasons = max(item.totalSeasons, details?.totalSeasons ?? 0)
+        Task { await maxOutProgress(for: item) }
+    }
+
+    /// Fill episode/season progress to the end, fetching the episode count if it isn't loaded yet.
+    private func maxOutProgress(for item: LibraryItem) async {
+        let loaded = details ?? (try? await service.details(for: result))
+        let episodes = max(item.totalEpisodes, loaded?.totalEpisodes ?? 0)
+        let seasons = max(item.totalSeasons, loaded?.totalSeasons ?? 0)
         guard episodes > 0 else { return }
-        if let details { store.backfill(item, with: details) }
+        if let loaded { store.backfill(item, with: loaded) }
         store.setProgress(item, season: max(seasons, 1), episode: episodes)
     }
 

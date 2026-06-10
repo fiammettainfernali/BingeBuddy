@@ -112,7 +112,7 @@ struct RecommendationsView: View {
     }
 
     private func load() async {
-        isLoading = true
+        if recommendations.isEmpty { isLoading = true }
         recommendations = await engine.recommendations(seeds: seeds, exclude: exclude)
         isLoading = false
     }
