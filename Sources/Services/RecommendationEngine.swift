@@ -13,7 +13,7 @@ struct RecommendationEngine {
     private let service = MetadataService()
 
     func recommendations(seeds: [LibraryItem], exclude: Set<String>,
-                         maxSeeds: Int = 10, limit: Int = 24) async -> [Recommendation] {
+                         maxSeeds: Int = 14, limit: Int = 60) async -> [Recommendation] {
         let chosen = Array(seeds.prefix(maxSeeds))
         guard !chosen.isEmpty else { return [] }
         let service = self.service
@@ -57,6 +57,7 @@ struct RecommendationsView: View {
     let seeds: [LibraryItem]
     let exclude: Set<String>
 
+    @EnvironmentObject private var store: LibraryStore
     @State private var recommendations: [Recommendation] = []
     @State private var isLoading = true
     @State private var loadedKey: String?
@@ -81,6 +82,11 @@ struct RecommendationsView: View {
                     Section(title) {
                         ForEach(recommendations) { rec in
                             NavigationLink(value: rec.result) { RecommendationRow(rec: rec) }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) { hide(rec) } label: {
+                                        Label("Not interested", systemImage: "hand.thumbsdown")
+                                    }
+                                }
                         }
                     }
                 }
@@ -92,6 +98,11 @@ struct RecommendationsView: View {
             await load()
             loadedKey = seedKey
         }
+    }
+
+    private func hide(_ rec: Recommendation) {
+        recommendations.removeAll { $0.result.id == rec.result.id }
+        store.hide(mediaKey: rec.result.id)
     }
 
     private func load() async {

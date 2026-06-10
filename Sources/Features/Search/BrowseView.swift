@@ -34,7 +34,7 @@ struct BrowseView: View {
                     .padding(.top, 40)
             } else {
                 VStack(alignment: .leading, spacing: 24) {
-                    Carousel(title: "For You", items: forYou)
+                    Carousel(title: "For You", items: forYou, onHide: hideForYou)
                     Carousel(title: "Trending this week", items: trending)
                     Carousel(title: scope == .anime ? "Most popular" : "Popular movies", items: popular)
                 }
@@ -58,18 +58,24 @@ struct BrowseView: View {
         popular = await popularTask
 
         if session.household != nil && !store.mySeeds.isEmpty {
-            let recs = await engine.recommendations(seeds: store.mySeeds, exclude: store.myExclusion, limit: 15)
+            let recs = await engine.recommendations(seeds: store.mySeeds, exclude: store.myExclusion, limit: 40)
             forYou = recs.map(\.result)
         } else {
             forYou = []
         }
         isLoading = false
     }
+
+    private func hideForYou(_ item: MediaSearchResult) {
+        forYou.removeAll { $0.id == item.id }
+        store.hide(mediaKey: item.id)
+    }
 }
 
 private struct Carousel: View {
     let title: String
     let items: [MediaSearchResult]
+    var onHide: ((MediaSearchResult) -> Void)? = nil
 
     var body: some View {
         if !items.isEmpty {
@@ -78,8 +84,18 @@ private struct Carousel: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 12) {
                         ForEach(items) { item in
-                            NavigationLink(value: item) { PosterCard(item: item) }
-                                .buttonStyle(.plain)
+                            if let onHide {
+                                NavigationLink(value: item) { PosterCard(item: item) }
+                                    .buttonStyle(.plain)
+                                    .contextMenu {
+                                        Button(role: .destructive) { onHide(item) } label: {
+                                            Label("Not interested", systemImage: "hand.thumbsdown")
+                                        }
+                                    }
+                            } else {
+                                NavigationLink(value: item) { PosterCard(item: item) }
+                                    .buttonStyle(.plain)
+                            }
                         }
                     }
                     .padding(.horizontal)

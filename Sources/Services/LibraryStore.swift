@@ -43,9 +43,11 @@ struct LibraryItem: Codable, Identifiable {
 @MainActor
 final class LibraryStore: ObservableObject {
     @Published var allItems: [LibraryItem] = []
+    @Published var hiddenRecs: Set<String> = []
 
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
+    private var prefsListener: ListenerRegistration?
     private var householdId: String?
     private var uid: String?
 
@@ -106,12 +108,14 @@ final class LibraryStore: ObservableObject {
     /// What to base couple "For Us" picks on.
     var ourSeeds: [LibraryItem] { seeds(from: myPersonal + partnerPersonal) }
 
-    /// Don't recommend things I already track.
-    var myExclusion: Set<String> { Set(myPersonal.map(\.mediaKey)) }
+    /// Don't recommend things I already track or have hidden.
+    var myExclusion: Set<String> {
+        Set(myPersonal.map(\.mediaKey)).union(hiddenRecs)
+    }
 
-    /// Don't recommend anything already in the household.
+    /// Don't recommend anything already in the household or hidden.
     var householdExclusion: Set<String> {
-        Set((myPersonal + partnerPersonal + togetherItems).map(\.mediaKey))
+        Set((myPersonal + partnerPersonal + togetherItems).map(\.mediaKey)).union(hiddenRecs)
     }
 
     // MARK: - Lifecycle
@@ -125,13 +129,31 @@ final class LibraryStore: ObservableObject {
 
     private func subscribe() {
         listener?.remove()
+        prefsListener?.remove()
         allItems = []
+        hiddenRecs = []
         guard let householdId else { return }
         listener = db.collection("households").document(householdId).collection("items")
             .addSnapshotListener { [weak self] snapshot, _ in
                 guard let self, let snapshot else { return }
                 self.allItems = snapshot.documents.compactMap { try? $0.data(as: LibraryItem.self) }
             }
+        guard let uid else { return }
+        prefsListener = db.collection("households").document(householdId)
+            .collection("prefs").document(uid)
+            .addSnapshotListener { [weak self] snapshot, _ in
+                guard let self else { return }
+                let hidden = (snapshot?.data()?["hiddenRecs"] as? [String]) ?? []
+                self.hiddenRecs = Set(hidden)
+            }
+    }
+
+    /// Hide a recommendation so it won't be suggested again.
+    func hide(mediaKey: String) {
+        guard let householdId, let uid else { return }
+        db.collection("households").document(householdId)
+            .collection("prefs").document(uid)
+            .setData(["hiddenRecs": FieldValue.arrayUnion([mediaKey])], merge: true)
     }
 
     func contains(mediaKey: String) -> Bool {
