@@ -199,7 +199,12 @@ struct DetailView: View {
 
     /// Fill episode/season progress to the end, fetching the episode count if it isn't loaded yet.
     private func maxOutProgress(for item: LibraryItem) async {
-        let loaded = details ?? (try? await service.details(for: result))
+        let loaded: MediaDetails?
+        if let details {
+            loaded = details
+        } else {
+            loaded = try? await service.details(for: result)
+        }
         let episodes = max(item.totalEpisodes, loaded?.totalEpisodes ?? 0)
         let seasons = max(item.totalSeasons, loaded?.totalSeasons ?? 0)
         guard episodes > 0 else { return }
