@@ -98,6 +98,12 @@ struct RecommendationsView: View {
             await load()
             loadedKey = seedKey
         }
+        .onChange(of: seedKey) { _, newKey in
+            Task {
+                await load()
+                loadedKey = newKey
+            }
+        }
     }
 
     private func hide(_ rec: Recommendation) {

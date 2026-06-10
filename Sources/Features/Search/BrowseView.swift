@@ -41,12 +41,18 @@ struct BrowseView: View {
                 .padding(.vertical)
             }
         }
-        // Only (re)load when the scope or your library actually changes — not every time you
-        // come back from a detail screen — so scroll position is preserved.
+        // Load on first appear, and whenever the scope or your library changes — but NOT on a
+        // plain navigation-back (same key), so scroll position is preserved.
         .task {
             guard loadedKey != seedKey else { return }
             await load()
             loadedKey = seedKey
+        }
+        .onChange(of: seedKey) { _, newKey in
+            Task {
+                await load()
+                loadedKey = newKey
+            }
         }
     }
 

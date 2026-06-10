@@ -56,7 +56,7 @@ struct DetailView: View {
                 if let item = togetherItem {
                     Picker("Status", selection: Binding(
                         get: { item.state },
-                        set: { store.setState(item, to: $0) }
+                        set: { setStatus($0, for: item) }
                     )) {
                         ForEach(WatchState.allCases) { Text($0.label).tag($0) }
                     }
@@ -148,7 +148,7 @@ struct DetailView: View {
                 Text("Status").font(.headline)
                 Picker("Status", selection: Binding(
                     get: { item.state },
-                    set: { store.setState(item, to: $0) }
+                    set: { setStatus($0, for: item) }
                 )) {
                     ForEach(WatchState.allCases) { Text($0.label).tag($0) }
                 }
@@ -189,6 +189,17 @@ struct DetailView: View {
                 Text(result.overview).font(.body).foregroundStyle(.secondary)
             }
         }
+    }
+
+    private func setStatus(_ newState: WatchState, for item: LibraryItem) {
+        store.setState(item, to: newState)
+        guard newState == .finished else { return }
+        // Max progress on finish, falling back to freshly-loaded details if stored totals are missing.
+        let episodes = max(item.totalEpisodes, details?.totalEpisodes ?? 0)
+        let seasons = max(item.totalSeasons, details?.totalSeasons ?? 0)
+        guard episodes > 0 else { return }
+        if let details { store.backfill(item, with: details) }
+        store.setProgress(item, season: max(seasons, 1), episode: episodes)
     }
 
     private func loadDetails() async {
