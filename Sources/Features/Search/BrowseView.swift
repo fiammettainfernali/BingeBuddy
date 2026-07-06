@@ -50,6 +50,10 @@ struct BrowseView: View {
                 .padding(.vertical)
             }
         }
+        .refreshable {
+            await loadTrendingPopular()
+            await loadForYou()
+        }
         // Trending/Popular reload only when the scope changes; For You reloads when your library
         // changes. Neither reloads on a plain navigation-back, preserving scroll.
         .task {
@@ -67,9 +71,12 @@ struct BrowseView: View {
 
     private func loadTrendingPopular() async {
         isLoading = true
-        trending = await service.trending(scope: scope)
-        popular = await service.popular(scope: scope)
+        async let trendingTask = service.trending(scope: scope)
+        async let popularTask = service.popular(scope: scope)
+        // Show trending as soon as it arrives; don't let a slow/failing popular call block it.
+        trending = await trendingTask
         isLoading = false
+        popular = await popularTask
     }
 
     private func loadForYou() async {

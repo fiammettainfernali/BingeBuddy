@@ -103,8 +103,8 @@ struct JikanProvider: Sendable {
     }
 
     func popular(page: Int = 1) async throws -> [MediaSearchResult] {
+        // Plain /top/anime (by score) — the ?filter=bypopularity variant has been 504-ing on MAL.
         let response: JikanListResponse = try await get("/top/anime", query: [
-            URLQueryItem(name: "filter", value: "bypopularity"),
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "sfw", value: "true")
         ])
