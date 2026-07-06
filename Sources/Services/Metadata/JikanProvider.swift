@@ -24,16 +24,26 @@ struct JikanProvider: Sendable {
         var components = URLComponents(string: base + path)
         components?.queryItems = query.isEmpty ? nil : query
         guard let url = components?.url else { throw MetadataError.badURL }
-        await JikanThrottle.shared.acquire()
-        let (data, response) = try await URLSession.shared.data(from: url)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw MetadataError.badResponse
+
+        // Jikan/MyAnimeList intermittently returns 429/5xx; back off and retry a few times.
+        for attempt in 0..<3 {
+            await JikanThrottle.shared.acquire()
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                guard let http = response as? HTTPURLResponse else { throw MetadataError.badResponse }
+                if [429, 500, 502, 503, 504].contains(http.statusCode) {
+                    try? await Task.sleep(nanoseconds: UInt64(0.8 * Double(attempt + 1) * 1_000_000_000))
+                    continue
+                }
+                guard (200..<300).contains(http.statusCode) else { throw MetadataError.badResponse }
+                return try JSONDecoder().decode(T.self, from: data)
+            } catch is DecodingError {
+                throw MetadataError.decoding
+            } catch {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
         }
-        do {
-            return try JSONDecoder().decode(T.self, from: data)
-        } catch {
-            throw MetadataError.decoding
-        }
+        throw MetadataError.badResponse
     }
 
     func search(_ query: String) async throws -> [MediaSearchResult] {

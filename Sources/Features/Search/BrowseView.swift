@@ -18,9 +18,16 @@ struct BrowseView: View {
     private let service = MetadataService()
     private let engine = RecommendationEngine()
 
-    /// For You depends only on your library (not the current scope).
+    /// Seed For You from the titles matching the current scope, so the Anime tab shows anime picks.
+    private var scopedSeeds: [LibraryItem] {
+        switch scope {
+        case .anime: return store.mySeeds.filter { $0.mediaType == .anime }
+        case .moviesTV: return store.mySeeds.filter { $0.mediaType == .movie || $0.mediaType == .tv }
+        }
+    }
+
     private var seedKey: String {
-        store.mySeeds.map(\.mediaKey).sorted().joined(separator: ",")
+        scope.rawValue + "|" + scopedSeeds.map(\.mediaKey).sorted().joined(separator: ",")
     }
 
     var body: some View {
@@ -50,6 +57,7 @@ struct BrowseView: View {
             if loadedSeedKey != seedKey { await loadForYou(); loadedSeedKey = seedKey }
         }
         .onChange(of: scope) { _, newScope in
+            forYou = []   // drop the previous scope's picks immediately
             Task { await loadTrendingPopular(); loadedScope = newScope }
         }
         .onChange(of: seedKey) { _, newKey in
@@ -65,11 +73,11 @@ struct BrowseView: View {
     }
 
     private func loadForYou() async {
-        guard session.household != nil, !store.mySeeds.isEmpty else {
+        guard session.household != nil, !scopedSeeds.isEmpty else {
             forYou = []
             return
         }
-        let recs = await engine.recommendations(seeds: store.mySeeds, exclude: store.myExclusion, limit: 40)
+        let recs = await engine.recommendations(seeds: scopedSeeds, exclude: store.myExclusion, limit: 40)
         // Don't wipe existing picks if a refresh came back empty (e.g. a rate-limit hiccup).
         if !recs.isEmpty || forYou.isEmpty {
             forYou = recs.map(\.result)
