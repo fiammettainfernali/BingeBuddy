@@ -4,6 +4,7 @@ import Foundation
 struct MetadataService: Sendable {
     private let tmdb = TMDBProvider()
     private let jikan = JikanProvider()
+    private let kitsu = KitsuProvider()       // anime charts (Jikan's chart endpoints are flaky)
     private let anilist = AniListProvider()   // legacy: resolves anime added before the Jikan switch
 
     func search(_ query: String, scope: SearchScope) async throws -> [MediaSearchResult] {
@@ -45,20 +46,18 @@ struct MetadataService: Sendable {
     }
 
     func trending(scope: SearchScope) async -> [MediaSearchResult] {
-        await collect(pages: scope == .anime ? 2 : 3) { page in
-            switch scope {
-            case .moviesTV: return (try? await tmdb.trending(page: page)) ?? []
-            case .anime: return (try? await jikan.trending(page: page)) ?? []
-            }
+        switch scope {
+        case .anime: return (try? await kitsu.trending()) ?? []
+        case .moviesTV:
+            return await collect(pages: 3) { (try? await tmdb.trending(page: $0)) ?? [] }
         }
     }
 
     func popular(scope: SearchScope) async -> [MediaSearchResult] {
-        await collect(pages: scope == .anime ? 2 : 3) { page in
-            switch scope {
-            case .moviesTV: return (try? await tmdb.popular(mediaType: .movie, page: page)) ?? []
-            case .anime: return (try? await jikan.popular(page: page)) ?? []
-            }
+        switch scope {
+        case .anime: return (try? await kitsu.popular()) ?? []
+        case .moviesTV:
+            return await collect(pages: 3) { (try? await tmdb.popular(mediaType: .movie, page: $0)) ?? [] }
         }
     }
 

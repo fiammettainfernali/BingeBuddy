@@ -13,7 +13,6 @@ struct BrowseView: View {
     @State private var popular: [MediaSearchResult] = []
     @State private var isLoading = true
     @State private var loadedScope: SearchScope?
-    @State private var diag = ""   // TEMP on-screen diagnostics
 
     private let service = MetadataService()
     private let engine = RecommendationEngine()
@@ -32,14 +31,6 @@ struct BrowseView: View {
 
     var body: some View {
         ScrollView {
-            if !diag.isEmpty {
-                Text(diag)
-                    .font(.caption2.monospaced())
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.top, 4)
-            }
             if isLoading {
                 ProgressView("Loading…")
                     .frame(maxWidth: .infinity)
@@ -52,8 +43,8 @@ struct BrowseView: View {
             } else {
                 VStack(alignment: .leading, spacing: 24) {
                     Carousel(title: "For You", items: forYou, onHide: hideForYou)
-                    Carousel(title: "Trending this week", items: trending)
-                    Carousel(title: scope == .anime ? "Most popular" : "Popular movies", items: popular)
+                    Carousel(title: scope == .anime ? "Top Anime" : "Trending this week", items: trending)
+                    Carousel(title: scope == .anime ? "Most Popular" : "Popular movies", items: popular)
                 }
                 .padding(.vertical)
             }
@@ -81,29 +72,13 @@ struct BrowseView: View {
 
     private func loadTrendingPopular() async {
         if trending.isEmpty && popular.isEmpty { isLoading = true }
-        diag = "loading [\(scope.rawValue)]…"
-        let newTrending = await service.trending(scope: scope)
-        let newPopular = await service.popular(scope: scope)
-        var line = "[\(scope.rawValue)] t=\(newTrending.count) p=\(newPopular.count) seeds=\(scopedSeeds.count)"
-        if scope == .anime { line += " | " + (await rawAnimeDiag()) }
-        diag = line
+        async let trendingTask = service.trending(scope: scope)
+        async let popularTask = service.popular(scope: scope)
+        let newTrending = await trendingTask
         if !newTrending.isEmpty || trending.isEmpty { trending = newTrending }
         isLoading = false
+        let newPopular = await popularTask
         if !newPopular.isEmpty || popular.isEmpty { popular = newPopular }
-    }
-
-    /// TEMP: hit Jikan directly (no throttle/retry/collect) to isolate network vs decode.
-    private func rawAnimeDiag() async -> String {
-        guard let url = URL(string: "https://api.jikan.moe/v4/seasons/now?page=1&sfw=true") else { return "badurl" }
-        do {
-            let (data, resp) = try await URLSession.shared.data(from: url)
-            let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
-            struct Min: Decodable { struct A: Decodable { let mal_id: Int }; let data: [A] }
-            let minCount = (try? JSONDecoder().decode(Min.self, from: data))?.data.count ?? -1
-            return "raw http=\(code) bytes=\(data.count) minDecode=\(minCount)"
-        } catch {
-            return "raw ERR " + String(describing: error).prefix(50)
-        }
     }
 
     private func loadForYou() async {
