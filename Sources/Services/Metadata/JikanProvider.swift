@@ -1,17 +1,21 @@
 import Foundation
 
 /// Serializes Jikan requests so bursts (e.g. loading recommendations) don't hit its rate limit.
+/// Each caller reserves its own time slot *synchronously* before sleeping, so concurrent callers
+/// are truly spaced out (no reentrancy burst).
 private actor JikanThrottle {
     static let shared = JikanThrottle()
-    private var lastRequest = Date.distantPast
-    private let minInterval: TimeInterval = 0.4   // ~2.5 requests/sec, under Jikan's limit
+    private var nextAllowed = Date.distantPast
+    private let minInterval: TimeInterval = 0.55   // < 2 req/sec, safely under Jikan's limit
 
     func acquire() async {
-        let elapsed = Date().timeIntervalSince(lastRequest)
-        if elapsed < minInterval {
-            try? await Task.sleep(nanoseconds: UInt64((minInterval - elapsed) * 1_000_000_000))
+        let now = Date()
+        let slot = max(now, nextAllowed)
+        nextAllowed = slot.addingTimeInterval(minInterval)   // reserve before any await
+        let delay = slot.timeIntervalSince(now)
+        if delay > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
         }
-        lastRequest = Date()
     }
 }
 

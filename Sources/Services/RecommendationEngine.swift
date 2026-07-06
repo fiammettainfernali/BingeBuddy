@@ -13,7 +13,7 @@ struct RecommendationEngine {
     private let service = MetadataService()
 
     func recommendations(seeds: [LibraryItem], exclude: Set<String>,
-                         maxSeeds: Int = 14, limit: Int = 60) async -> [Recommendation] {
+                         maxSeeds: Int = 8, limit: Int = 60) async -> [Recommendation] {
         let chosen = Array(seeds.prefix(maxSeeds))
         guard !chosen.isEmpty else { return [] }
         let service = self.service
