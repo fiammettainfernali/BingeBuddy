@@ -33,9 +33,23 @@ struct KitsuProvider: Sendable {
     }
 
     private func chart(filters: [URLQueryItem]) async throws -> [MediaSearchResult] {
+        let limit = 20
+        var all: [MediaSearchResult] = []
+        var seen = Set<String>()
+        // Kitsu caps a page at 20; page through until we've got the whole list (or a sane max).
+        for pageIndex in 0..<7 {
+            let (results, rawCount) = try await fetchPage(filters: filters, limit: limit, offset: pageIndex * limit)
+            for item in results where seen.insert(item.id).inserted { all.append(item) }
+            if rawCount < limit { break }   // last page
+        }
+        return all
+    }
+
+    private func fetchPage(filters: [URLQueryItem], limit: Int, offset: Int) async throws -> ([MediaSearchResult], Int) {
         var components = URLComponents(string: base + "/anime")
         components?.queryItems = filters + [
-            URLQueryItem(name: "page[limit]", value: "20"),
+            URLQueryItem(name: "page[limit]", value: String(limit)),
+            URLQueryItem(name: "page[offset]", value: String(offset)),
             URLQueryItem(name: "include", value: "mappings")
         ]
         guard let url = components?.url else { throw MetadataError.badURL }
@@ -56,7 +70,7 @@ struct KitsuProvider: Sendable {
             }
         }
 
-        return decoded.data.compactMap { anime -> MediaSearchResult? in
+        let results = decoded.data.compactMap { anime -> MediaSearchResult? in
             let refs = anime.relationships?.mappings?.data ?? []
             guard let malId = refs.compactMap({ malByMappingId[$0.id] }).first else { return nil }
             let attrs = anime.attributes
@@ -70,6 +84,7 @@ struct KitsuProvider: Sendable {
                 posterURL: attrs.posterImage?.large ?? attrs.posterImage?.original,
                 overview: attrs.synopsis ?? "")
         }
+        return (results, decoded.data.count)
     }
 }
 
