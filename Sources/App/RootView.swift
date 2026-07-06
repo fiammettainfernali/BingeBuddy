@@ -5,8 +5,15 @@ struct RootView: View {
     @EnvironmentObject private var session: Session
     @EnvironmentObject private var library: LibraryStore
     @EnvironmentObject private var suggestions: SuggestionStore
+    @EnvironmentObject private var notifications: NotificationManager
 
     private var configKey: String { "\(session.uid ?? "")|\(session.household?.id ?? "")" }
+
+    private var watchingKey: String {
+        library.myPersonal
+            .filter { $0.state == .watching && $0.source == "tmdb" && $0.mediaType == .tv }
+            .map(\.mediaKey).sorted().joined()
+    }
 
     var body: some View {
         TabView {
@@ -29,6 +36,10 @@ struct RootView: View {
         .task(id: configKey) {
             library.configure(householdId: session.household?.id, uid: session.uid)
             suggestions.configure(householdId: session.household?.id, uid: session.uid)
+        }
+        .task(id: watchingKey) {
+            await notifications.refreshStatus()
+            await notifications.scheduleEpisodeReminders(for: library.myPersonal)
         }
     }
 }

@@ -9,6 +9,7 @@ struct BingeBuddyApp: App {
     @StateObject private var library = LibraryStore()
     @StateObject private var suggestions = SuggestionStore()
     @StateObject private var vault = VaultManager()
+    @StateObject private var notifications = NotificationManager()
 
     init() {
         FirebaseApp.configure()
@@ -28,6 +29,7 @@ struct BingeBuddyApp: App {
                 .environmentObject(library)
                 .environmentObject(suggestions)
                 .environmentObject(vault)
+                .environmentObject(notifications)
                 .task { await session.bootstrap() }
         }
         .modelContainer(container)

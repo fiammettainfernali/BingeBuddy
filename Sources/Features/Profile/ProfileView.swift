@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject private var session: Session
+    @EnvironmentObject private var store: LibraryStore
+    @EnvironmentObject private var notifications: NotificationManager
     @State private var name = ""
     @State private var joinCode = ""
 
@@ -17,6 +19,27 @@ struct ProfileView: View {
                 }
             }
             .navigationTitle("Profile")
+            .task { await notifications.refreshStatus() }
+        }
+    }
+
+    private var notificationsSection: some View {
+        Section("Notifications") {
+            if notifications.authorized {
+                Label("Episode reminders on", systemImage: "bell.fill")
+                    .foregroundStyle(.green)
+            } else {
+                Button {
+                    Task {
+                        await notifications.requestAuthorization()
+                        await notifications.scheduleEpisodeReminders(for: store.myPersonal)
+                    }
+                } label: {
+                    Label("Get reminders for new episodes", systemImage: "bell")
+                }
+            }
+            Text("Reminds you when a new episode airs for TV series you're watching.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -64,6 +87,7 @@ struct ProfileView: View {
                 .disabled(session.isBusy)
             }
 
+            notificationsSection
             vaultSection
         }
     }
@@ -119,6 +143,7 @@ struct ProfileView: View {
                 }
             }
 
+            notificationsSection
             vaultSection
         }
     }

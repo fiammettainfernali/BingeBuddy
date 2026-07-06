@@ -289,8 +289,9 @@ on-device for two people.
 - **Reactions / mini-reviews** — a short note or emoji reaction per shared/partner title
   ("loved the finale").
 - **Activity feed** — "Sarah finished Severance ★★★★★" so you each see what the other did.
-- ★ **Push notifications** — alert when your partner suggests something or finishes a shared
-  show. (Requires enabling the Push capability we deferred.)
+- **Episode reminders** ✅ DONE (local notifications) — reminds you when a new episode airs for
+  TV series you're Watching (TMDB next-episode air date; reschedules on app open). Anime (Jikan)
+  next-air dates + partner-suggestion push still TODO (partner push needs the Push capability).
 
 ### Organization & insight
 - **Custom tags / lists** — beyond the 4 states (e.g. "Cozy", "Spooky", "Rainy day").

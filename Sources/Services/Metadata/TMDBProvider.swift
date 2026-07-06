@@ -6,6 +6,14 @@ struct TMDBProvider: MediaProvider, Sendable {
     private let base = "https://api.themoviedb.org/3"
     private let imageBase = "https://image.tmdb.org/t/p/w500"
 
+    private static let ymd: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
     private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async throws -> T {
         var components = URLComponents(string: base + path)
         components?.queryItems = query.isEmpty ? nil : query
@@ -62,12 +70,25 @@ struct TMDBProvider: MediaProvider, Sendable {
                 source: "tmdb", sourceId: sourceId, title: d.name ?? "Untitled",
                 mediaType: .tv, year: year,
                 posterURL: d.poster_path.map { imageBase + $0 }, overview: d.overview ?? "")
+
+            var nextDate: Date?
+            var nextLabel: String?
+            if let next = d.next_episode_to_air,
+               let airStr = next.air_date,
+               let date = Self.ymd.date(from: airStr) {
+                nextDate = date
+                let title = next.name.map { " — \($0)" } ?? ""
+                nextLabel = "S\(next.season_number ?? 0) E\(next.episode_number ?? 0)\(title) airs today"
+            }
+
             return MediaDetails(
                 result: result,
                 totalSeasons: d.number_of_seasons ?? seasons.count,
                 totalEpisodes: d.number_of_episodes ?? 0,
                 genres: (d.genres ?? []).map { $0.name },
-                seasons: seasons)
+                seasons: seasons,
+                nextEpisodeAirDate: nextDate,
+                nextEpisodeLabel: nextLabel)
         } else {
             let d: TMDBMovieDetails = try await get("/movie/\(sourceId)")
             let year = d.release_date?.split(separator: "-").first.map(String.init)
@@ -159,6 +180,13 @@ private struct TMDBSeason: Decodable {
     let episode_count: Int?
 }
 
+private struct TMDBNextEpisode: Decodable {
+    let air_date: String?
+    let episode_number: Int?
+    let season_number: Int?
+    let name: String?
+}
+
 private struct TMDBTVDetails: Decodable {
     let name: String?
     let overview: String?
@@ -168,6 +196,7 @@ private struct TMDBTVDetails: Decodable {
     let number_of_episodes: Int?
     let genres: [TMDBGenre]?
     let seasons: [TMDBSeason]?
+    let next_episode_to_air: TMDBNextEpisode?
 }
 
 private struct TMDBMovieDetails: Decodable {

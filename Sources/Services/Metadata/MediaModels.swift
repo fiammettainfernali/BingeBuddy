@@ -25,6 +25,8 @@ struct MediaDetails: Sendable {
     let totalEpisodes: Int
     let genres: [String]
     let seasons: [SeasonInfo]
+    var nextEpisodeAirDate: Date? = nil
+    var nextEpisodeLabel: String? = nil
 }
 
 enum SearchScope: String, CaseIterable, Identifiable, Hashable {

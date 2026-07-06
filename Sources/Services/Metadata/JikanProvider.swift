@@ -1,5 +1,20 @@
 import Foundation
 
+/// Serializes Jikan requests so bursts (e.g. loading recommendations) don't hit its rate limit.
+private actor JikanThrottle {
+    static let shared = JikanThrottle()
+    private var lastRequest = Date.distantPast
+    private let minInterval: TimeInterval = 0.4   // ~2.5 requests/sec, under Jikan's limit
+
+    func acquire() async {
+        let elapsed = Date().timeIntervalSince(lastRequest)
+        if elapsed < minInterval {
+            try? await Task.sleep(nanoseconds: UInt64((minInterval - elapsed) * 1_000_000_000))
+        }
+        lastRequest = Date()
+    }
+}
+
 /// Anime via the Jikan API (MyAnimeList). Free, no key. Our primary anime source
 /// (AniList has had stability outages).
 struct JikanProvider: Sendable {
@@ -9,6 +24,7 @@ struct JikanProvider: Sendable {
         var components = URLComponents(string: base + path)
         components?.queryItems = query.isEmpty ? nil : query
         guard let url = components?.url else { throw MetadataError.badURL }
+        await JikanThrottle.shared.acquire()
         let (data, response) = try await URLSession.shared.data(from: url)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw MetadataError.badResponse
