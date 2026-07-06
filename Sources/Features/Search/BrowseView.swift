@@ -13,6 +13,7 @@ struct BrowseView: View {
     @State private var popular: [MediaSearchResult] = []
     @State private var isLoading = true
     @State private var loadedScope: SearchScope?
+    @State private var diag = ""   // TEMP on-screen diagnostics
 
     private let service = MetadataService()
     private let engine = RecommendationEngine()
@@ -31,6 +32,14 @@ struct BrowseView: View {
 
     var body: some View {
         ScrollView {
+            if !diag.isEmpty {
+                Text(diag)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+            }
             if isLoading {
                 ProgressView("Loading…")
                     .frame(maxWidth: .infinity)
@@ -72,12 +81,12 @@ struct BrowseView: View {
 
     private func loadTrendingPopular() async {
         if trending.isEmpty && popular.isEmpty { isLoading = true }
-        async let trendingTask = service.trending(scope: scope)
-        async let popularTask = service.popular(scope: scope)
-        let newTrending = await trendingTask
+        diag = "loading [\(scope.rawValue)]…"
+        let newTrending = await service.trending(scope: scope)
+        let newPopular = await service.popular(scope: scope)
+        diag = "[\(scope.rawValue)] trending=\(newTrending.count) popular=\(newPopular.count) seeds=\(scopedSeeds.count)"
         if !newTrending.isEmpty || trending.isEmpty { trending = newTrending }
         isLoading = false
-        let newPopular = await popularTask
         if !newPopular.isEmpty || popular.isEmpty { popular = newPopular }
     }
 
