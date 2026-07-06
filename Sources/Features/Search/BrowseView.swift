@@ -43,7 +43,7 @@ struct BrowseView: View {
             } else {
                 VStack(alignment: .leading, spacing: 24) {
                     Carousel(title: "For You", items: forYou, onHide: hideForYou)
-                    Carousel(title: scope == .anime ? "Top Anime" : "Trending this week", items: trending)
+                    Carousel(title: scope == .anime ? "This Season" : "Trending this week", items: trending)
                     Carousel(title: scope == .anime ? "Most Popular" : "Popular movies", items: popular)
                 }
                 .padding(.vertical)

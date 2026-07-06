@@ -6,13 +6,35 @@ import Foundation
 struct KitsuProvider: Sendable {
     private let base = "https://kitsu.io/api/edge"
 
-    func trending() async throws -> [MediaSearchResult] { try await chart(sort: "-averageRating") }
-    func popular() async throws -> [MediaSearchResult] { try await chart(sort: "-userCount") }
+    /// This season's currently-airing anime, most popular first.
+    func trending() async throws -> [MediaSearchResult] {
+        let (year, season) = Self.currentSeason()
+        return try await chart(filters: [
+            URLQueryItem(name: "filter[seasonYear]", value: String(year)),
+            URLQueryItem(name: "filter[season]", value: season),
+            URLQueryItem(name: "sort", value: "-userCount")
+        ])
+    }
 
-    private func chart(sort: String) async throws -> [MediaSearchResult] {
+    /// All-time most popular anime.
+    func popular() async throws -> [MediaSearchResult] {
+        try await chart(filters: [URLQueryItem(name: "sort", value: "-userCount")])
+    }
+
+    static func currentSeason(now: Date = Date()) -> (year: Int, season: String) {
+        let cal = Calendar.current
+        let year = cal.component(.year, from: now)
+        switch cal.component(.month, from: now) {
+        case 1...3: return (year, "winter")
+        case 4...6: return (year, "spring")
+        case 7...9: return (year, "summer")
+        default: return (year, "fall")
+        }
+    }
+
+    private func chart(filters: [URLQueryItem]) async throws -> [MediaSearchResult] {
         var components = URLComponents(string: base + "/anime")
-        components?.queryItems = [
-            URLQueryItem(name: "sort", value: sort),
+        components?.queryItems = filters + [
             URLQueryItem(name: "page[limit]", value: "20"),
             URLQueryItem(name: "include", value: "mappings")
         ]
