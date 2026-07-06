@@ -84,10 +84,26 @@ struct BrowseView: View {
         diag = "loading [\(scope.rawValue)]…"
         let newTrending = await service.trending(scope: scope)
         let newPopular = await service.popular(scope: scope)
-        diag = "[\(scope.rawValue)] trending=\(newTrending.count) popular=\(newPopular.count) seeds=\(scopedSeeds.count)"
+        var line = "[\(scope.rawValue)] t=\(newTrending.count) p=\(newPopular.count) seeds=\(scopedSeeds.count)"
+        if scope == .anime { line += " | " + (await rawAnimeDiag()) }
+        diag = line
         if !newTrending.isEmpty || trending.isEmpty { trending = newTrending }
         isLoading = false
         if !newPopular.isEmpty || popular.isEmpty { popular = newPopular }
+    }
+
+    /// TEMP: hit Jikan directly (no throttle/retry/collect) to isolate network vs decode.
+    private func rawAnimeDiag() async -> String {
+        guard let url = URL(string: "https://api.jikan.moe/v4/seasons/now?page=1&sfw=true") else { return "badurl" }
+        do {
+            let (data, resp) = try await URLSession.shared.data(from: url)
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
+            struct Min: Decodable { struct A: Decodable { let mal_id: Int }; let data: [A] }
+            let minCount = (try? JSONDecoder().decode(Min.self, from: data))?.data.count ?? -1
+            return "raw http=\(code) bytes=\(data.count) minDecode=\(minCount)"
+        } catch {
+            return "raw ERR " + String(describing: error).prefix(50)
+        }
     }
 
     private func loadForYou() async {
