@@ -113,9 +113,10 @@ struct TogetherView: View {
                                 ItemRow(item: item, subtitle: statusLine(item))
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                if item.totalEpisodes > 0 {
+                                if item.mediaType != .movie {
                                     Button {
-                                        let next = min(item.currentEpisode + 1, item.totalEpisodes)
+                                        let cap = item.totalEpisodes > 0 ? item.totalEpisodes : Int.max
+                                        let next = min(item.currentEpisode + 1, cap)
                                         store.setProgress(item, season: item.currentSeason, episode: next)
                                     } label: {
                                         Label("+1 Ep", systemImage: "plus")
@@ -176,8 +177,10 @@ struct TogetherView: View {
 
     private func statusLine(_ item: LibraryItem) -> String {
         var line = item.state.label
-        if item.state == .watching && item.totalEpisodes > 0 {
-            line += " · S\(item.currentSeason) E\(item.currentEpisode)"
+        if item.state == .watching && item.mediaType != .movie {
+            line += item.totalSeasons > 1
+                ? " · S\(item.currentSeason) E\(item.currentEpisode)"
+                : " · Ep \(item.currentEpisode)"
         }
         if item.rating > 0 {
             line += " · \(item.rating)★"

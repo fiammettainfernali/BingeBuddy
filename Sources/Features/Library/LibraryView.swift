@@ -88,9 +88,10 @@ struct LibraryView: View {
                                 ForEach(visible) { item in
                                     NavigationLink(value: item.asSearchResult) { LibraryRow(item: item) }
                                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            if item.totalEpisodes > 0 {
+                                            if item.mediaType != .movie {
                                                 Button {
-                                                    let next = min(item.currentEpisode + 1, item.totalEpisodes)
+                                                    let cap = item.totalEpisodes > 0 ? item.totalEpisodes : Int.max
+                                                    let next = min(item.currentEpisode + 1, cap)
                                                     store.setProgress(item, season: item.currentSeason, episode: next)
                                                 } label: {
                                                     Label("+1 Ep", systemImage: "plus")
@@ -212,8 +213,10 @@ private struct LibraryRow: View {
                         }
                     }
                 }
-                if item.state == .watching && item.totalEpisodes > 0 {
-                    Text("S\(item.currentSeason) · E\(item.currentEpisode)")
+                if item.state == .watching && item.mediaType != .movie {
+                    Text(item.totalSeasons > 1
+                         ? "S\(item.currentSeason) · E\(item.currentEpisode)"
+                         : "Episode \(item.currentEpisode)")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }

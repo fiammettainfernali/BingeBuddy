@@ -62,15 +62,17 @@ struct DetailView: View {
                     }
                     .pickerStyle(.segmented)
 
-                    if item.state == .watching && item.totalEpisodes > 0 {
-                        Stepper("Season \(item.currentSeason)", value: Binding(
-                            get: { item.currentSeason },
-                            set: { store.setProgress(item, season: max(1, $0), episode: item.currentEpisode) }
-                        ), in: 1...max(1, item.totalSeasons))
+                    if item.state == .watching {
+                        if item.totalSeasons > 1 {
+                            Stepper("Season \(item.currentSeason)", value: Binding(
+                                get: { item.currentSeason },
+                                set: { store.setProgress(item, season: max(1, $0), episode: item.currentEpisode) }
+                            ), in: 1...item.totalSeasons)
+                        }
                         Stepper("Episode \(item.currentEpisode)", value: Binding(
                             get: { item.currentEpisode },
                             set: { store.setProgress(item, season: item.currentSeason, episode: max(0, $0)) }
-                        ), in: 0...max(0, item.totalEpisodes))
+                        ), in: 0...(item.totalEpisodes > 0 ? item.totalEpisodes : 9999))
                     }
 
                     Button(role: .destructive) {
@@ -160,17 +162,19 @@ struct DetailView: View {
                 StarRating(rating: item.rating) { store.setRating(item, to: $0) }
             }
 
-            if item.state == .watching && item.totalEpisodes > 0 {
+            if item.state == .watching {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Progress").font(.headline)
-                    Stepper("Season \(item.currentSeason)", value: Binding(
-                        get: { item.currentSeason },
-                        set: { store.setProgress(item, season: max(1, $0), episode: item.currentEpisode) }
-                    ), in: 1...max(1, item.totalSeasons))
+                    if item.totalSeasons > 1 {
+                        Stepper("Season \(item.currentSeason)", value: Binding(
+                            get: { item.currentSeason },
+                            set: { store.setProgress(item, season: max(1, $0), episode: item.currentEpisode) }
+                        ), in: 1...item.totalSeasons)
+                    }
                     Stepper("Episode \(item.currentEpisode)", value: Binding(
                         get: { item.currentEpisode },
                         set: { store.setProgress(item, season: item.currentSeason, episode: max(0, $0)) }
-                    ), in: 0...max(0, item.totalEpisodes))
+                    ), in: 0...(item.totalEpisodes > 0 ? item.totalEpisodes : 9999))
                 }
             }
 

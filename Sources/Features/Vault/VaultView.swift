@@ -74,8 +74,10 @@ private struct VaultRow: View {
                 Text(item.title).font(.headline).lineLimit(2)
                 Text(item.mediaType.label + (item.year.map { " · \($0)" } ?? ""))
                     .font(.caption).foregroundStyle(.secondary)
-                if item.state == .watching && item.totalEpisodes > 0 {
-                    Text("S\(item.currentSeason) · E\(item.currentEpisode)")
+                if item.state == .watching && item.mediaType != .movie {
+                    Text(item.totalSeasons > 1
+                         ? "S\(item.currentSeason) · E\(item.currentEpisode)"
+                         : "Episode \(item.currentEpisode)")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }
@@ -212,17 +214,19 @@ private struct VaultItemDetail: View {
                     }
                 }
 
-                if item.state == .watching && item.totalEpisodes > 0 {
+                if item.state == .watching {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Progress").font(.headline)
-                        Stepper("Season \(item.currentSeason)", value: Binding(
-                            get: { item.currentSeason },
-                            set: { item.currentSeason = max(1, $0); touch() }
-                        ), in: 1...max(1, item.totalSeasons))
+                        if item.totalSeasons > 1 {
+                            Stepper("Season \(item.currentSeason)", value: Binding(
+                                get: { item.currentSeason },
+                                set: { item.currentSeason = max(1, $0); touch() }
+                            ), in: 1...item.totalSeasons)
+                        }
                         Stepper("Episode \(item.currentEpisode)", value: Binding(
                             get: { item.currentEpisode },
                             set: { item.currentEpisode = max(0, $0); touch() }
-                        ), in: 0...max(0, item.totalEpisodes))
+                        ), in: 0...(item.totalEpisodes > 0 ? item.totalEpisodes : 9999))
                     }
                 }
 
