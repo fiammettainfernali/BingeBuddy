@@ -13,7 +13,6 @@ struct BrowseView: View {
     @State private var popular: [MediaSearchResult] = []
     @State private var isLoading = true
     @State private var loadedScope: SearchScope?
-    @State private var loadedSeedKey: String?
 
     private let service = MetadataService()
     private let engine = RecommendationEngine()
@@ -54,29 +53,32 @@ struct BrowseView: View {
             await loadTrendingPopular()
             await loadForYou()
         }
-        // Trending/Popular reload only when the scope changes; For You reloads when your library
-        // changes. Neither reloads on a plain navigation-back, preserving scroll.
-        .task {
-            if loadedScope != scope { await loadTrendingPopular(); loadedScope = scope }
-            if loadedSeedKey != seedKey { await loadForYou(); loadedSeedKey = seedKey }
+        // .task(id:) reliably re-runs when the scope/library changes. On a genuine scope change we
+        // clear first (so the previous scope's items don't linger); on a plain reappear we keep
+        // what's there and just refresh in place, so nothing blanks out.
+        .task(id: scope) {
+            if loadedScope != scope {
+                trending = []
+                popular = []
+                forYou = []
+                loadedScope = scope
+            }
+            await loadTrendingPopular()
         }
-        .onChange(of: scope) { _, newScope in
-            forYou = []   // drop the previous scope's picks immediately
-            Task { await loadTrendingPopular(); loadedScope = newScope }
-        }
-        .onChange(of: seedKey) { _, newKey in
-            Task { await loadForYou(); loadedSeedKey = newKey }
+        .task(id: seedKey) {
+            await loadForYou()
         }
     }
 
     private func loadTrendingPopular() async {
-        isLoading = true
+        if trending.isEmpty && popular.isEmpty { isLoading = true }
         async let trendingTask = service.trending(scope: scope)
         async let popularTask = service.popular(scope: scope)
-        // Show trending as soon as it arrives; don't let a slow/failing popular call block it.
-        trending = await trendingTask
+        let newTrending = await trendingTask
+        if !newTrending.isEmpty || trending.isEmpty { trending = newTrending }
         isLoading = false
-        popular = await popularTask
+        let newPopular = await popularTask
+        if !newPopular.isEmpty || popular.isEmpty { popular = newPopular }
     }
 
     private func loadForYou() async {
@@ -85,7 +87,6 @@ struct BrowseView: View {
             return
         }
         let recs = await engine.recommendations(seeds: scopedSeeds, exclude: store.myExclusion, limit: 40)
-        // Don't wipe existing picks if a refresh came back empty (e.g. a rate-limit hiccup).
         if !recs.isEmpty || forYou.isEmpty {
             forYou = recs.map(\.result)
         }
