@@ -108,6 +108,13 @@ struct LibraryView: View {
             .navigationTitle("Library")
             .searchable(text: $searchText, prompt: "Filter your library")
             .navigationDestination(for: MediaSearchResult.self) { DetailView(result: $0) }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { CatchUpView() } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                }
+            }
         }
     }
 

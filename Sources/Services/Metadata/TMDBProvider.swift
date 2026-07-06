@@ -116,6 +116,21 @@ struct TMDBProvider: MediaProvider, Sendable {
         }
     }
 
+    /// Future air dates for the current/next season of a TV series.
+    func upcomingEpisodes(tvId: String) async throws -> [EpisodeAiring] {
+        let d: TMDBTVDetails = try await get("/tv/\(tvId)")
+        guard let next = d.next_episode_to_air, let season = next.season_number else { return [] }
+        let seasonDetails: TMDBSeasonDetails = try await get("/tv/\(tvId)/season/\(season)")
+        let today = Calendar.current.startOfDay(for: Date())
+        return (seasonDetails.episodes ?? []).compactMap { ep in
+            guard let airStr = ep.air_date,
+                  let date = Self.ymd.date(from: airStr),
+                  date >= today else { return nil }
+            let name = ep.name.map { " — \($0)" } ?? ""
+            return EpisodeAiring(date: date, label: "S\(season) E\(ep.episode_number ?? 0)\(name) airs today")
+        }
+    }
+
     func trending(page: Int = 1) async throws -> [MediaSearchResult] {
         let response: TMDBSearchResponse = try await get("/trending/all/week",
             query: [URLQueryItem(name: "page", value: String(page))])
@@ -185,6 +200,16 @@ private struct TMDBNextEpisode: Decodable {
     let episode_number: Int?
     let season_number: Int?
     let name: String?
+}
+
+private struct TMDBSeasonEpisode: Decodable {
+    let air_date: String?
+    let episode_number: Int?
+    let name: String?
+}
+
+private struct TMDBSeasonDetails: Decodable {
+    let episodes: [TMDBSeasonEpisode]?
 }
 
 private struct TMDBTVDetails: Decodable {

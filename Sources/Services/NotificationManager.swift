@@ -23,7 +23,8 @@ final class NotificationManager: ObservableObject {
         authorized = granted
     }
 
-    /// Reschedule a reminder for the next episode of each currently-watching TV series.
+    /// Reschedule reminders for every upcoming episode of the shows you're watching.
+    /// These fire even when the app is closed. Reschedules on app open / watch-list changes.
     func scheduleEpisodeReminders(for items: [LibraryItem]) async {
         guard authorized else { return }
         let center = UNUserNotificationCenter.current()
@@ -34,23 +35,40 @@ final class NotificationManager: ObservableObject {
         center.removePendingNotificationRequests(withIdentifiers: ourIds)
 
         let watching = items.filter {
-            $0.state == .watching && $0.source == "tmdb" && $0.mediaType == .tv
+            $0.state == .watching && ($0.mediaType == .tv || $0.mediaType == .anime)
         }
-        for item in watching {
-            guard let details = try? await service.details(for: item.asSearchResult),
-                  let airDate = details.nextEpisodeAirDate, airDate > Date() else { continue }
-
-            let content = UNMutableNotificationContent()
-            content.title = "New episode: \(item.title)"
-            content.body = details.nextEpisodeLabel ?? "A new episode airs today."
-            content.sound = .default
-
-            var comps = Calendar.current.dateComponents([.year, .month, .day], from: airDate)
-            comps.hour = 9   // air_date has no time; remind at 9am
-            let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
-            let request = UNNotificationRequest(identifier: "ep-\(item.mediaKey)",
-                                                content: content, trigger: trigger)
-            try? await center.add(request)
+        var scheduled = 0
+        for item in watching where scheduled < 50 {   // stay under iOS's 64 pending limit
+            switch await service.episodeSchedule(for: item.asSearchResult) {
+            case .dates(let airings):
+                for airing in airings.prefix(8) where scheduled < 50 {
+                    var comps = Calendar.current.dateComponents([.year, .month, .day], from: airing.date)
+                    comps.hour = 9
+                    let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+                    await addReminder(id: "ep-\(item.mediaKey)-\(comps.year ?? 0)-\(comps.month ?? 0)-\(comps.day ?? 0)",
+                                      title: "New episode: \(item.title)", body: airing.label, trigger: trigger)
+                    scheduled += 1
+                }
+            case .weekly(let weekday, let label):
+                var comps = DateComponents()
+                comps.weekday = weekday
+                comps.hour = 9
+                let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+                await addReminder(id: "ep-\(item.mediaKey)-weekly",
+                                  title: "New episode: \(item.title)", body: label, trigger: trigger)
+                scheduled += 1
+            case .none:
+                break
+            }
         }
+    }
+
+    private func addReminder(id: String, title: String, body: String, trigger: UNNotificationTrigger) async {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+        try? await UNUserNotificationCenter.current().add(request)
     }
 }

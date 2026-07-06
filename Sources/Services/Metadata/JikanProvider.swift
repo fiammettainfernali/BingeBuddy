@@ -63,6 +63,27 @@ struct JikanProvider: Sendable {
         return response.data.prefix(20).map { $0.entry.asSearchResult }
     }
 
+    /// If the anime is currently airing with a known broadcast day, returns the weekday (1=Sun...7=Sat).
+    func airingWeekday(animeId: String) async -> Int? {
+        guard let response: JikanSingleResponse = try? await get("/anime/\(animeId)") else { return nil }
+        let anime = response.data
+        guard anime.airing == true, let day = anime.broadcast?.day else { return nil }
+        return Self.weekday(from: day)
+    }
+
+    private static func weekday(from day: String) -> Int? {
+        switch day.lowercased() {
+        case "sundays": return 1
+        case "mondays": return 2
+        case "tuesdays": return 3
+        case "wednesdays": return 4
+        case "thursdays": return 5
+        case "fridays": return 6
+        case "saturdays": return 7
+        default: return nil
+        }
+    }
+
     func trending(page: Int = 1) async throws -> [MediaSearchResult] {
         let response: JikanListResponse = try await get("/seasons/now", query: [
             URLQueryItem(name: "page", value: String(page)),
@@ -95,6 +116,8 @@ private struct JikanAiredFrom: Decodable { let year: Int? }
 private struct JikanAiredProp: Decodable { let from: JikanAiredFrom? }
 private struct JikanAired: Decodable { let prop: JikanAiredProp? }
 
+private struct JikanBroadcast: Decodable { let day: String? }
+
 private struct JikanAnime: Decodable {
     let mal_id: Int
     let title: String?
@@ -105,6 +128,8 @@ private struct JikanAnime: Decodable {
     let images: JikanImages?
     let genres: [JikanGenre]?
     let aired: JikanAired?
+    let airing: Bool?
+    let broadcast: JikanBroadcast?
 
     var asSearchResult: MediaSearchResult {
         let resolvedYear = year ?? aired?.prop?.from?.year

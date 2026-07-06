@@ -29,6 +29,21 @@ struct MetadataService: Sendable {
         }
     }
 
+    /// How to schedule episode reminders for a given title.
+    func episodeSchedule(for result: MediaSearchResult) async -> EpisodeSchedule {
+        if result.source == "jikan" {
+            if let weekday = await jikan.airingWeekday(animeId: result.sourceId) {
+                return .weekly(weekday: weekday, label: "New episode of \(result.title) airs today")
+            }
+            return .none
+        }
+        if result.source == "tmdb" && result.mediaType == .tv {
+            let episodes = (try? await tmdb.upcomingEpisodes(tvId: result.sourceId)) ?? []
+            return episodes.isEmpty ? .none : .dates(episodes)
+        }
+        return .none
+    }
+
     func trending(scope: SearchScope) async -> [MediaSearchResult] {
         await collect(pages: scope == .anime ? 2 : 3) { page in
             switch scope {

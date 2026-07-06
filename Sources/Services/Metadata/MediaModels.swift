@@ -29,6 +29,18 @@ struct MediaDetails: Sendable {
     var nextEpisodeLabel: String? = nil
 }
 
+struct EpisodeAiring: Sendable {
+    let date: Date
+    let label: String
+}
+
+/// How to schedule reminders for a show's upcoming episodes.
+enum EpisodeSchedule: Sendable {
+    case dates([EpisodeAiring])              // concrete upcoming air dates (TMDB TV)
+    case weekly(weekday: Int, label: String) // recurring weekly (currently-airing anime)
+    case none
+}
+
 enum SearchScope: String, CaseIterable, Identifiable, Hashable {
     case moviesTV = "Movies & TV"
     case anime = "Anime"
