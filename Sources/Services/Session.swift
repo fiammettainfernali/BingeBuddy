@@ -209,4 +209,72 @@ final class Session: ObservableObject {
         let alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"   // no ambiguous chars
         return String((0..<length).compactMap { _ in alphabet.randomElement() })
     }
+
+    // MARK: - Account deletion
+
+    /// Permanently removes this user's cloud data and auth account. If they're the last
+    /// household member, the whole household (including shared items) is removed too.
+    /// The local vault is untouched. Returns true on success.
+    @discardableResult
+    func deleteAccount() async -> Bool {
+        guard let uid else { return false }
+        isBusy = true
+        errorMessage = nil
+        do {
+            if let householdId = household?.id {
+                let householdRef = db.collection("households").document(householdId)
+                let isLastMember = (household?.memberUids.count ?? 1) <= 1
+
+                let items = householdRef.collection("items")
+                let suggestions = householdRef.collection("suggestions")
+                if isLastMember {
+                    try await deleteAll(items)
+                    try await deleteAll(suggestions)
+                    try await deleteAll(householdRef.collection("prefs"))
+                } else {
+                    try await deleteAll(items.whereField("ownerUid", isEqualTo: uid)
+                                             .whereField("scope", isEqualTo: "personal"))
+                    try await deleteAll(suggestions.whereField("toUid", isEqualTo: uid))
+                    try await deleteAll(suggestions.whereField("fromUid", isEqualTo: uid))
+                    try await householdRef.collection("prefs").document(uid).delete()
+                }
+
+                householdListener?.remove()
+                if isLastMember {
+                    try await householdRef.delete()
+                } else {
+                    try await householdRef.updateData([
+                        "memberUids": FieldValue.arrayRemove([uid]),
+                        "memberNames.\(uid)": FieldValue.delete()
+                    ])
+                }
+                household = nil
+            }
+
+            try await Auth.auth().currentUser?.delete()
+            self.uid = nil
+            appleLinked = false
+            isBusy = false
+            await bootstrap()   // fresh anonymous account; app returns to setup
+            return true
+        } catch let error as NSError where error.code == AuthErrorCode.requiresRecentLogin.rawValue {
+            errorMessage = "For security, sign in with Apple again first, then retry deleting."
+        } catch {
+            errorMessage = "Couldn't delete your account. Check your connection and try again."
+        }
+        isBusy = false
+        return false
+    }
+
+    /// Delete every document a query returns, in batches under Firestore's 500-write limit.
+    private func deleteAll(_ query: Query) async throws {
+        while true {
+            let snapshot = try await query.limit(to: 400).getDocuments()
+            guard !snapshot.isEmpty else { return }
+            let batch = db.batch()
+            snapshot.documents.forEach { batch.deleteDocument($0.reference) }
+            try await batch.commit()
+            if snapshot.documents.count < 400 { return }
+        }
+    }
 }

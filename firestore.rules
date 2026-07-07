@@ -35,7 +35,10 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if false;
+      // Only the last remaining member may delete the household (account deletion).
+      allow delete: if request.auth != null
+                    && request.auth.uid in resource.data.memberUids
+                    && resource.data.memberUids.size() == 1;
 
       // Everything inside a household (library items, together, suggestions, prefs)
       // is members-only.

@@ -15,8 +15,8 @@ packages:
 
 settings:
   base:
-    MARKETING_VERSION: "0.14.0"
-    CURRENT_PROJECT_VERSION: "38"
+    MARKETING_VERSION: "0.15.0"
+    CURRENT_PROJECT_VERSION: "39"   # fallback — CI overwrites with latest TestFlight build + 1
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: "6UYHJ5YC3V"            # your Apple Developer Team ID
 

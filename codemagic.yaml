@@ -43,6 +43,15 @@ workflows:
         script: |
           brew install xcodegen
 
+      - name: Set build number from TestFlight
+        script: |
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" 2>/dev/null | tail -n 1 || true)
+          case "$LATEST" in (*[!0-9]*|'') LATEST=0;; esac
+          NEXT=$((LATEST + 1))
+          echo "Latest TestFlight build: $LATEST → using $NEXT"
+          sed -i '' -E "s/CURRENT_PROJECT_VERSION: \"[0-9]+\"/CURRENT_PROJECT_VERSION: \"$NEXT\"/" project.yml
+          grep CURRENT_PROJECT_VERSION project.yml
+
       - name: Generate Xcode project from project.yml
         script: |
           xcodegen generate
