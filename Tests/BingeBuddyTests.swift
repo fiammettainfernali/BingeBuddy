@@ -138,6 +138,24 @@ final class BingeBuddyTests: XCTestCase {
         XCTAssertEqual(result.episode, 0)
     }
 
+    // MARK: - Episode paging
+
+    func testPagedSlicesFallbackEpisodeLists() {
+        let eps = (1...250).map { EpisodeInfo(number: $0, title: nil, airDate: nil) }
+        let pageOne = MetadataService.paged(eps, page: 1)
+        XCTAssertEqual(pageOne.lastPage, 3)
+        XCTAssertEqual(pageOne.episodes.count, 100)
+        XCTAssertEqual(pageOne.episodes.first?.number, 1)
+
+        let pageThree = MetadataService.paged(eps, page: 3)
+        XCTAssertEqual(pageThree.episodes.count, 50)
+        XCTAssertEqual(pageThree.episodes.first?.number, 201)
+
+        // Out-of-range pages clamp instead of crashing.
+        XCTAssertEqual(MetadataService.paged(eps, page: 99).episodes.first?.number, 201)
+        XCTAssertEqual(MetadataService.paged([], page: 1).lastPage, 1)
+    }
+
     // MARK: - State round-trips
 
     func testWatchStateRawValuesAreStable() {

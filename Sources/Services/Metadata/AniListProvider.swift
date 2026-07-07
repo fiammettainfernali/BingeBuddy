@@ -93,6 +93,74 @@ struct AniListProvider: MediaProvider, Sendable {
         return response.data.Media.recommendations.nodes.compactMap { $0.mediaRecommendation?.asSearchResult }
     }
 
+    /// The MyAnimeList id for an AniList id — bridges legacy library items to Jikan.
+    func malId(anilistId: String) async throws -> Int? {
+        let gql = "query ($id: Int) { Media(id: $id, type: ANIME) { idMal } }"
+        let response: ALMalResponse = try await post(query: gql, variables: ["id": Int(anilistId) ?? 0])
+        return response.data.Media.idMal
+    }
+
+    /// Episode list built from AniList's airing schedule (numbers + air dates, titles when
+    /// a licensed stream provides them). Fallback for titles Jikan can't serve.
+    func episodes(anilistId: String) async throws -> [EpisodeInfo] {
+        try await episodeList(idField: "id", id: Int(anilistId) ?? 0)
+    }
+
+    func episodes(malId: String) async throws -> [EpisodeInfo] {
+        try await episodeList(idField: "idMal", id: Int(malId) ?? 0)
+    }
+
+    private func episodeList(idField: String, id: Int) async throws -> [EpisodeInfo] {
+        var airDates: [Int: Int] = [:]      // episode number → earliest airingAt
+        var titles: [Int: String] = [:]
+        var page = 1
+        while page <= 12 {                   // 50/page → up to 600 episodes
+            let gql = """
+            query ($id: Int, $page: Int) {
+              Media(\(idField): $id, type: ANIME) {
+                streamingEpisodes { title }
+                airingSchedule(page: $page, perPage: 50) {
+                  pageInfo { hasNextPage }
+                  nodes { episode airingAt }
+                }
+              }
+            }
+            """
+            let response: ALEpResponse = try await post(query: gql, variables: ["id": id, "page": page])
+            let media = response.data.Media
+            if page == 1, let streams = media.streamingEpisodes {
+                titles = Self.parseStreamingTitles(streams)
+            }
+            for node in media.airingSchedule?.nodes ?? [] where airDates[node.episode] == nil {
+                airDates[node.episode] = node.airingAt
+            }
+            if media.airingSchedule?.pageInfo?.hasNextPage != true { break }
+            page += 1
+        }
+        return airDates.keys.sorted().map { number in
+            EpisodeInfo(number: number,
+                        title: titles[number],
+                        airDate: airDates[number].map { Date(timeIntervalSince1970: TimeInterval($0)) })
+        }
+    }
+
+    /// Streaming titles look like "Episode 12 - The Title"; extract number + clean name.
+    private static func parseStreamingTitles(_ eps: [ALStreamEp]) -> [Int: String] {
+        var titles: [Int: String] = [:]
+        for (index, ep) in eps.enumerated() {
+            guard let raw = ep.title else { continue }
+            var number = index + 1
+            var name = raw
+            if raw.lowercased().hasPrefix("episode "), let sep = raw.range(of: " - ") {
+                let numPart = raw[raw.index(raw.startIndex, offsetBy: 8)..<sep.lowerBound]
+                if let parsed = Int(numPart.trimmingCharacters(in: .whitespaces)) { number = parsed }
+                name = String(raw[sep.upperBound...])
+            }
+            titles[number] = name
+        }
+        return titles
+    }
+
     func trending() async throws -> [MediaSearchResult] {
         try await page(sort: "TRENDING_DESC")
     }
@@ -156,6 +224,21 @@ private struct AniListMedia: Decodable {
             overview: (description ?? "").strippingHTML)
     }
 }
+
+private struct ALMalMedia: Decodable { let idMal: Int? }
+private struct ALMalData: Decodable { let Media: ALMalMedia }
+private struct ALMalResponse: Decodable { let data: ALMalData }
+
+struct ALStreamEp: Decodable { let title: String? }
+private struct ALSchedNode: Decodable { let episode: Int; let airingAt: Int }
+private struct ALPageInfo: Decodable { let hasNextPage: Bool? }
+private struct ALSched: Decodable { let pageInfo: ALPageInfo?; let nodes: [ALSchedNode] }
+private struct ALEpMedia: Decodable {
+    let streamingEpisodes: [ALStreamEp]?
+    let airingSchedule: ALSched?
+}
+private struct ALEpData: Decodable { let Media: ALEpMedia }
+private struct ALEpResponse: Decodable { let data: ALEpData }
 
 private struct AniListPage: Decodable { let media: [AniListMedia] }
 private struct AniListSearchData: Decodable { let Page: AniListPage }

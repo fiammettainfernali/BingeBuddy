@@ -1,5 +1,18 @@
 import Foundation
 
+/// Session-lived cache of AniList-id → MAL-id resolutions (legacy library items).
+actor MalIdCache {
+    static let shared = MalIdCache()
+    private var cache: [String: Int] = [:]
+
+    func resolve(anilistId: String, using provider: AniListProvider) async -> Int? {
+        if let cached = cache[anilistId] { return cached }
+        guard let resolved = (try? await provider.malId(anilistId: anilistId)) ?? nil else { return nil }
+        cache[anilistId] = resolved
+        return resolved
+    }
+}
+
 /// Routes search/detail requests to the right provider and normalizes the results.
 struct MetadataService: Sendable {
     private let tmdb = TMDBProvider()
@@ -32,16 +45,43 @@ struct MetadataService: Sendable {
 
     /// Episode checklist for one season (TV) or one 100-episode page (anime).
     /// `lastPage` is always 1 for TV.
+    ///
+    /// Anime uses a fallback chain: Jikan (titles + dates when MAL has them and the endpoint
+    /// cooperates) → AniList airing schedule (numbers + dates). Legacy AniList-era items are
+    /// bridged to their MAL id first, so they get the full experience without re-adding.
     func episodes(for result: MediaSearchResult, season: Int, page: Int = 1)
         async throws -> (episodes: [EpisodeInfo], lastPage: Int) {
         switch result.source {
         case "jikan":
-            return try await jikan.episodes(animeId: result.sourceId, page: page)
+            if let fetched = try? await jikan.episodes(animeId: result.sourceId, page: page),
+               !fetched.episodes.isEmpty {
+                return fetched
+            }
+            let fallback = (try? await anilist.episodes(malId: result.sourceId)) ?? []
+            return Self.paged(fallback, page: page)
+        case "anilist":
+            if let mal = await MalIdCache.shared.resolve(anilistId: result.sourceId, using: anilist),
+               let fetched = try? await jikan.episodes(animeId: String(mal), page: page),
+               !fetched.episodes.isEmpty {
+                return fetched
+            }
+            let fallback = (try? await anilist.episodes(anilistId: result.sourceId)) ?? []
+            return Self.paged(fallback, page: page)
         case "tmdb" where result.mediaType == .tv:
             return (try await tmdb.episodes(tvId: result.sourceId, season: season), 1)
         default:
             return ([], 1)
         }
+    }
+
+    /// Slice a full episode list into 100-episode pages (matching Jikan's paging).
+    static func paged(_ episodes: [EpisodeInfo], page: Int) -> (episodes: [EpisodeInfo], lastPage: Int) {
+        guard !episodes.isEmpty else { return ([], 1) }
+        let perPage = 100
+        let lastPage = (episodes.count + perPage - 1) / perPage
+        let clamped = min(max(page, 1), lastPage)
+        let start = (clamped - 1) * perPage
+        return (Array(episodes[start..<min(start + perPage, episodes.count)]), lastPage)
     }
 
     /// How to schedule episode reminders for a given title.
