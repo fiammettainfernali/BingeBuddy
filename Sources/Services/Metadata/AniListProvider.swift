@@ -161,6 +161,21 @@ struct AniListProvider: MediaProvider, Sendable {
         return titles
     }
 
+    /// Official streaming links from AniList's external links.
+    func streamingLinks(idField: String, id: Int) async throws -> [WatchProvider] {
+        let gql = """
+        query ($id: Int) {
+          Media(\(idField): $id, type: ANIME) {
+            externalLinks { site url type }
+          }
+        }
+        """
+        let response: ALLinksResponse = try await post(query: gql, variables: ["id": id])
+        return (response.data.Media.externalLinks ?? [])
+            .filter { $0.type == "STREAMING" }
+            .map { WatchProvider(name: $0.site ?? "Stream", logoURL: nil, url: $0.url) }
+    }
+
     func trending() async throws -> [MediaSearchResult] {
         try await page(sort: "TRENDING_DESC")
     }
@@ -224,6 +239,11 @@ private struct AniListMedia: Decodable {
             overview: (description ?? "").strippingHTML)
     }
 }
+
+private struct ALExternalLink: Decodable { let site: String?; let url: String?; let type: String? }
+private struct ALLinksMedia: Decodable { let externalLinks: [ALExternalLink]? }
+private struct ALLinksData: Decodable { let Media: ALLinksMedia }
+private struct ALLinksResponse: Decodable { let data: ALLinksData }
 
 private struct ALMalMedia: Decodable { let idMal: Int? }
 private struct ALMalData: Decodable { let Media: ALMalMedia }

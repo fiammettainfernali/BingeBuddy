@@ -84,6 +84,37 @@ struct MetadataService: Sendable {
         return (Array(episodes[start..<min(start + perPage, episodes.count)]), lastPage)
     }
 
+    /// Where a title can be streamed. TMDB (JustWatch) for film/TV in the user's region;
+    /// direct platform links for anime (Jikan, falling back to AniList's external links).
+    func watchProviders(for result: MediaSearchResult) async -> WatchAvailability? {
+        switch result.source {
+        case "tmdb":
+            let region = Locale.current.region?.identifier ?? "US"
+            return try? await tmdb.watchProviders(sourceId: result.sourceId,
+                                                  mediaType: result.mediaType,
+                                                  region: region)
+        case "jikan":
+            if let links = try? await jikan.streaming(animeId: result.sourceId), !links.isEmpty {
+                return WatchAvailability(providers: links, moreLink: nil, attribution: nil)
+            }
+            if let mal = Int(result.sourceId),
+               let links = try? await anilist.streamingLinks(idField: "idMal", id: mal),
+               !links.isEmpty {
+                return WatchAvailability(providers: links, moreLink: nil, attribution: nil)
+            }
+            return nil
+        case "anilist":
+            if let id = Int(result.sourceId),
+               let links = try? await anilist.streamingLinks(idField: "id", id: id),
+               !links.isEmpty {
+                return WatchAvailability(providers: links, moreLink: nil, attribution: nil)
+            }
+            return nil
+        default:
+            return nil
+        }
+    }
+
     /// How to schedule episode reminders for a given title.
     func episodeSchedule(for result: MediaSearchResult) async -> EpisodeSchedule {
         if result.source == "jikan" {

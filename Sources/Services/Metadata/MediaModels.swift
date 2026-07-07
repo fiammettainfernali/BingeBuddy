@@ -44,6 +44,21 @@ struct EpisodeInfo: Identifiable, Sendable {
     var id: Int { number }
 }
 
+/// One place a title can be streamed.
+struct WatchProvider: Identifiable, Sendable {
+    let name: String
+    let logoURL: String?
+    let url: String?          // tappable deep link when the source provides one
+    var id: String { name }
+}
+
+/// Where a title is available to stream, plus attribution/overflow links.
+struct WatchAvailability: Sendable {
+    let providers: [WatchProvider]
+    let moreLink: String?     // full listing page (TMDB/JustWatch)
+    let attribution: String?  // required credit line for the data source
+}
+
 /// Pure watermark math for the episode checklist. Progress is linear (a watermark of
 /// season/episode), so "checking" an episode marks everything up to it as watched.
 enum EpisodeProgress {

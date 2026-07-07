@@ -7,6 +7,7 @@ struct DetailView: View {
     @EnvironmentObject private var session: Session
     @EnvironmentObject private var suggestions: SuggestionStore
     @State private var details: MediaDetails?
+    @State private var watch: WatchAvailability?
     @State private var isLoadingDetails = true
     @State private var didSuggest = false
 
@@ -19,6 +20,7 @@ struct DetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
+                whereToWatch
                 if let item = existing {
                     controls(for: item)
                 } else {
@@ -207,6 +209,54 @@ struct DetailView: View {
         }
     }
 
+    @ViewBuilder private var whereToWatch: some View {
+        if let watch, !watch.providers.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Where to watch").font(.headline)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(watch.providers) { provider in
+                            if let urlString = provider.url, let url = URL(string: urlString) {
+                                Link(destination: url) { providerChip(provider) }
+                            } else {
+                                providerChip(provider)
+                            }
+                        }
+                    }
+                }
+                HStack(spacing: 12) {
+                    if let more = watch.moreLink, let url = URL(string: more) {
+                        Link("All options", destination: url)
+                            .font(.caption)
+                    }
+                    if let attribution = watch.attribution {
+                        Text(attribution)
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
+            }
+        }
+    }
+
+    private func providerChip(_ provider: WatchProvider) -> some View {
+        HStack(spacing: 6) {
+            if provider.logoURL != nil {
+                PosterImage(url: provider.logoURL, width: 24, height: 24)
+            }
+            Text(provider.name)
+                .font(.subheadline.weight(.medium))
+            if provider.url != nil {
+                Image(systemName: "arrow.up.forward")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(Capsule().fill(Color(.secondarySystemBackground)))
+        .foregroundStyle(.primary)
+    }
+
     @ViewBuilder private var synopsis: some View {
         if !result.overview.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
@@ -225,6 +275,7 @@ struct DetailView: View {
             if let item = existing { store.refresh(item, with: details) }
             if let shared = togetherItem { store.refresh(shared, with: details) }
         }
+        watch = await service.watchProviders(for: result)
     }
 }
 

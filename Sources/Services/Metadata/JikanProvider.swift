@@ -98,6 +98,12 @@ struct JikanProvider: Sendable {
         }
     }
 
+    /// Streaming platforms with direct links (e.g. Crunchyroll, HIDIVE).
+    func streaming(animeId: String) async throws -> [WatchProvider] {
+        let response: JikanStreamingResponse = try await get("/anime/\(animeId)/streaming")
+        return response.data.map { WatchProvider(name: $0.name, logoURL: nil, url: $0.url) }
+    }
+
     /// One page (100 eps) of an anime's episode list, with the total page count.
     func episodes(animeId: String, page: Int) async throws -> (episodes: [EpisodeInfo], lastPage: Int) {
         let response: JikanEpisodesResponse = try await get("/anime/\(animeId)/episodes", query: [
@@ -133,6 +139,9 @@ struct JikanProvider: Sendable {
 // MARK: - Jikan DTOs
 
 private struct JikanListResponse: Decodable { let data: [JikanAnime] }
+
+private struct JikanStreamingResponse: Decodable { let data: [JikanStreamingLink] }
+private struct JikanStreamingLink: Decodable { let name: String; let url: String? }
 
 private struct JikanEpisodesResponse: Decodable {
     let data: [JikanEpisode]

@@ -118,6 +118,24 @@ struct TMDBProvider: MediaProvider, Sendable {
         }
     }
 
+    /// Streaming availability in the user's region (flatrate/free/ads tiers).
+    func watchProviders(sourceId: String, mediaType: MediaType, region: String) async throws -> WatchAvailability? {
+        let path = mediaType == .tv ? "/tv/\(sourceId)/watch/providers" : "/movie/\(sourceId)/watch/providers"
+        let response: TMDBWatchResponse = try await get(path)
+        guard let regional = response.results?[region] else { return nil }
+        let raw = (regional.flatrate ?? []) + (regional.free ?? []) + (regional.ads ?? [])
+        var seen = Set<String>()
+        let providers = raw.compactMap { provider -> WatchProvider? in
+            guard seen.insert(provider.provider_name).inserted else { return nil }
+            return WatchProvider(name: provider.provider_name,
+                                 logoURL: provider.logo_path.map { "https://image.tmdb.org/t/p/w92" + $0 },
+                                 url: nil)
+        }
+        return WatchAvailability(providers: providers,
+                                 moreLink: regional.link,
+                                 attribution: "Streaming data by JustWatch")
+    }
+
     /// Full episode list for one season of a TV series.
     func episodes(tvId: String, season: Int) async throws -> [EpisodeInfo] {
         let d: TMDBSeasonDetails = try await get("/tv/\(tvId)/season/\(season)")
@@ -212,6 +230,18 @@ private struct TMDBNextEpisode: Decodable {
     let episode_number: Int?
     let season_number: Int?
     let name: String?
+}
+
+private struct TMDBWatchResponse: Decodable { let results: [String: TMDBWatchRegion]? }
+private struct TMDBWatchRegion: Decodable {
+    let link: String?
+    let flatrate: [TMDBWatchProviderDTO]?
+    let free: [TMDBWatchProviderDTO]?
+    let ads: [TMDBWatchProviderDTO]?
+}
+private struct TMDBWatchProviderDTO: Decodable {
+    let provider_name: String
+    let logo_path: String?
 }
 
 private struct TMDBSeasonEpisode: Decodable {
