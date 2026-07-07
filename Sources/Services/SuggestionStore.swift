@@ -77,13 +77,23 @@ final class SuggestionStore: ObservableObject {
         if let poster = result.posterURL { data["posterURL"] = poster }
         if let year = result.year { data["year"] = year }
 
+        // Deterministic id: re-suggesting the same title updates the card instead of duplicating it.
+        let docId = "sug_\(toUid)_\(result.id)"
         db.collection("households").document(householdId)
-            .collection("suggestions").addDocument(data: data)
+            .collection("suggestions").document(docId).setData(data, merge: true) { error in
+                if error != nil {
+                    Task { @MainActor in ErrorCenter.shared.report("Couldn't send the suggestion — check your connection.") }
+                }
+            }
     }
 
     func dismiss(_ suggestion: Suggestion) {
         guard let householdId, let id = suggestion.docId else { return }
         db.collection("households").document(householdId)
-            .collection("suggestions").document(id).delete()
+            .collection("suggestions").document(id).delete { error in
+                if error != nil {
+                    Task { @MainActor in ErrorCenter.shared.report("Couldn't update the inbox — check your connection.") }
+                }
+            }
     }
 }

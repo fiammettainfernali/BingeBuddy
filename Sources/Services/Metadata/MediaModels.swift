@@ -27,6 +27,8 @@ struct MediaDetails: Sendable {
     let seasons: [SeasonInfo]
     var nextEpisodeAirDate: Date? = nil
     var nextEpisodeLabel: String? = nil
+    var lastAiredSeason: Int? = nil
+    var lastAiredEpisode: Int? = nil
 }
 
 struct EpisodeAiring: Sendable {

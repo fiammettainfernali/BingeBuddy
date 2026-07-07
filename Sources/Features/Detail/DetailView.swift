@@ -199,8 +199,10 @@ struct DetailView: View {
         isLoadingDetails = true
         details = try? await service.details(for: result)
         isLoadingDetails = false
-        if let item = existing, let details {
-            store.backfill(item, with: details)
+        // Keep stored metadata in sync (stale episode counts, new seasons, poster changes).
+        if let details {
+            if let item = existing { store.refresh(item, with: details) }
+            if let shared = togetherItem { store.refresh(shared, with: details) }
         }
     }
 }

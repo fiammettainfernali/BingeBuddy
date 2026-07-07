@@ -32,7 +32,7 @@ struct ProfileView: View {
                 Button {
                     Task {
                         await notifications.requestAuthorization()
-                        await notifications.scheduleEpisodeReminders(for: store.myPersonal)
+                        await notifications.scheduleEpisodeReminders(for: store.myPersonal, force: true)
                     }
                 } label: {
                     Label("Get reminders for new episodes", systemImage: "bell")

@@ -22,6 +22,8 @@ struct LibraryItem: Codable, Identifiable {
     var source: String = ""
     var sourceId: String = ""
     var note: String = ""
+    var lastAiredSeason: Int?      // latest aired episode (TMDB TV), for catch-up on airing shows
+    var lastAiredEpisode: Int?
     @ServerTimestamp var addedAt: Date?
     @ServerTimestamp var updatedAt: Date?
 
@@ -197,7 +199,11 @@ final class LibraryStore: ObservableObject {
         if let year = result.year { data["year"] = year }
 
         db.collection("households").document(householdId)
-            .collection("items").document(docId).setData(data, merge: true)
+            .collection("items").document(docId).setData(data, merge: true) { error in
+                if error != nil {
+                    Task { @MainActor in ErrorCenter.shared.report("Couldn't add the title — check your connection.") }
+                }
+            }
     }
 
     func addTogether(result: MediaSearchResult, details: MediaDetails?) {
@@ -228,7 +234,11 @@ final class LibraryStore: ObservableObject {
         if let year = result.year { data["year"] = year }
 
         db.collection("households").document(householdId)
-            .collection("items").document(docId).setData(data, merge: true)
+            .collection("items").document(docId).setData(data, merge: true) { error in
+                if error != nil {
+                    Task { @MainActor in ErrorCenter.shared.report("Couldn't add to Together — check your connection.") }
+                }
+            }
     }
 
     func setState(_ item: LibraryItem, to state: WatchState) {
@@ -243,26 +253,55 @@ final class LibraryStore: ObservableObject {
         update(item, ["currentSeason": season, "currentEpisode": episode])
     }
 
-    func backfill(_ item: LibraryItem, with details: MediaDetails) {
+    /// Sync stored metadata with freshly-fetched details: fills gaps AND updates stale values
+    /// (e.g. an airing anime that finished, or a TV show that gained a season). Only writes
+    /// when something actually changed, and never overwrites good data with empty values.
+    func refresh(_ item: LibraryItem, with details: MediaDetails) {
         var fields: [String: Any] = [:]
-        if item.totalEpisodes == 0 { fields["totalEpisodes"] = details.totalEpisodes }
-        if item.totalSeasons == 0 { fields["totalSeasons"] = details.totalSeasons }
-        if item.genres.isEmpty && !details.genres.isEmpty { fields["genres"] = details.genres }
+        if details.totalEpisodes > 0 && details.totalEpisodes != item.totalEpisodes {
+            fields["totalEpisodes"] = details.totalEpisodes
+        }
+        if details.totalSeasons > 0 && details.totalSeasons != item.totalSeasons {
+            fields["totalSeasons"] = details.totalSeasons
+        }
+        if !details.genres.isEmpty && details.genres != item.genres {
+            fields["genres"] = details.genres
+        }
+        if let poster = details.result.posterURL, poster != item.posterURL {
+            fields["posterURL"] = poster
+        }
+        if !details.result.overview.isEmpty && details.result.overview != item.overview {
+            fields["overview"] = details.result.overview
+        }
+        if let season = details.lastAiredSeason, season != item.lastAiredSeason {
+            fields["lastAiredSeason"] = season
+        }
+        if let episode = details.lastAiredEpisode, episode != item.lastAiredEpisode {
+            fields["lastAiredEpisode"] = episode
+        }
         guard !fields.isEmpty else { return }
-        update(item, fields)
+        update(item, fields, touch: false)   // a metadata sync isn't user activity
     }
 
     func remove(_ item: LibraryItem) {
         guard let householdId, let id = item.docId else { return }
         db.collection("households").document(householdId)
-            .collection("items").document(id).delete()
+            .collection("items").document(id).delete { error in
+                if error != nil {
+                    Task { @MainActor in ErrorCenter.shared.report("Couldn't remove the title — check your connection.") }
+                }
+            }
     }
 
-    private func update(_ item: LibraryItem, _ fields: [String: Any]) {
+    private func update(_ item: LibraryItem, _ fields: [String: Any], touch: Bool = true) {
         guard let householdId, let id = item.docId else { return }
         var data = fields
-        data["updatedAt"] = FieldValue.serverTimestamp()
+        if touch { data["updatedAt"] = FieldValue.serverTimestamp() }
         db.collection("households").document(householdId)
-            .collection("items").document(id).updateData(data)
+            .collection("items").document(id).updateData(data) { error in
+                if error != nil {
+                    Task { @MainActor in ErrorCenter.shared.report("Couldn't save changes — check your connection.") }
+                }
+            }
     }
 }

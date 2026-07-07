@@ -23,20 +23,36 @@ final class NotificationManager: ObservableObject {
         authorized = granted
     }
 
+    private let lastScheduleKeyDefault = "notifications.lastScheduleKey"
+    private let lastScheduleDateDefault = "notifications.lastScheduleDate"
+
     /// Reschedule reminders for every upcoming episode of the shows you're watching.
-    /// These fire even when the app is closed. Reschedules on app open / watch-list changes.
-    func scheduleEpisodeReminders(for items: [LibraryItem]) async {
+    /// These fire even when the app is closed.
+    ///
+    /// Scheduling fetches details for every watching show, so it's budgeted: it only re-runs
+    /// when the watching list actually changed or the last run is over ~20h old (once a day).
+    /// Pass `force: true` to bypass (e.g. right after the user enables reminders).
+    func scheduleEpisodeReminders(for items: [LibraryItem], force: Bool = false) async {
         guard authorized else { return }
+
+        let watching = items.filter {
+            $0.state == .watching && ($0.mediaType == .tv || $0.mediaType == .anime)
+        }
+
+        let defaults = UserDefaults.standard
+        let key = watching.map(\.mediaKey).sorted().joined(separator: ",")
+        let lastKey = defaults.string(forKey: lastScheduleKeyDefault)
+        let lastRun = defaults.object(forKey: lastScheduleDateDefault) as? Date ?? .distantPast
+        if !force && key == lastKey && Date().timeIntervalSince(lastRun) < 20 * 3600 {
+            return
+        }
+
         let center = UNUserNotificationCenter.current()
 
         // Clear our previously-scheduled episode reminders before re-adding.
         let pending = await center.pendingNotificationRequests()
         let ourIds = pending.filter { $0.identifier.hasPrefix("ep-") }.map(\.identifier)
         center.removePendingNotificationRequests(withIdentifiers: ourIds)
-
-        let watching = items.filter {
-            $0.state == .watching && ($0.mediaType == .tv || $0.mediaType == .anime)
-        }
         var scheduled = 0
         for item in watching where scheduled < 50 {   // stay under iOS's 64 pending limit
             switch await service.episodeSchedule(for: item.asSearchResult) {
@@ -61,6 +77,9 @@ final class NotificationManager: ObservableObject {
                 break
             }
         }
+
+        defaults.set(key, forKey: lastScheduleKeyDefault)
+        defaults.set(Date(), forKey: lastScheduleDateDefault)
     }
 
     private func addReminder(id: String, title: String, body: String, trigger: UNNotificationTrigger) async {

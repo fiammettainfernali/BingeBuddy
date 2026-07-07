@@ -30,7 +30,11 @@ struct InboxView: View {
                                 library.add(result: suggestion.asSearchResult, state: .wantToWatch, details: nil)
                                 suggestions.dismiss(suggestion)
                             },
-                            onDismiss: { suggestions.dismiss(suggestion) })
+                            onDismiss: {
+                                // A dismissal is a taste signal: don't recommend this later.
+                                library.hide(mediaKey: suggestion.mediaKey)
+                                suggestions.dismiss(suggestion)
+                            })
                     }
                     .listStyle(.plain)
                 }

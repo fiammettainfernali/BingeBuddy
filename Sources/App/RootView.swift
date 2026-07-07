@@ -6,6 +6,7 @@ struct RootView: View {
     @EnvironmentObject private var library: LibraryStore
     @EnvironmentObject private var suggestions: SuggestionStore
     @EnvironmentObject private var notifications: NotificationManager
+    @ObservedObject private var errors = ErrorCenter.shared
 
     private var configKey: String { "\(session.uid ?? "")|\(session.household?.id ?? "")" }
 
@@ -40,6 +41,14 @@ struct RootView: View {
         .task(id: watchingKey) {
             await notifications.refreshStatus()
             await notifications.scheduleEpisodeReminders(for: library.myPersonal)
+        }
+        .alert("Something didn't save", isPresented: Binding(
+            get: { errors.message != nil },
+            set: { if !$0 { errors.message = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errors.message ?? "")
         }
     }
 }

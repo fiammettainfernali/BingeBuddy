@@ -1,9 +1,13 @@
 import SwiftUI
 import SwiftData
 
-/// Shows the gate until unlocked, then the vault contents. Re-locks on exit.
+/// Shows the gate until unlocked, then the vault contents.
+/// Re-locks when you leave the vault or the app goes to the background.
+/// (Item details are presented as sheets, not pushes, so opening one doesn't
+/// trigger onDisappear and lock the vault out from under you.)
 struct VaultContainerView: View {
     @EnvironmentObject private var vault: VaultManager
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -16,6 +20,9 @@ struct VaultContainerView: View {
         .navigationTitle("Vault")
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear { vault.lock() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { vault.lock() }
+        }
     }
 }
 
@@ -26,6 +33,7 @@ struct VaultView: View {
     @Query(sort: \WatchItem.updatedAt, order: .reverse) private var items: [WatchItem]
     @State private var selectedState: WatchState = .watching
     @State private var showSearch = false
+    @State private var selectedItem: WatchItem?
 
     private var filtered: [WatchItem] { items.filter { $0.state == selectedState } }
 
@@ -45,7 +53,8 @@ struct VaultView: View {
             } else {
                 List {
                     ForEach(filtered) { item in
-                        NavigationLink(value: item) { VaultRow(item: item) }
+                        Button { selectedItem = item } label: { VaultRow(item: item) }
+                            .buttonStyle(.plain)
                     }
                 }
                 .listStyle(.plain)
@@ -60,7 +69,16 @@ struct VaultView: View {
             }
         }
         .sheet(isPresented: $showSearch) { VaultSearchView() }
-        .navigationDestination(for: WatchItem.self) { VaultItemDetail(item: $0) }
+        .sheet(item: $selectedItem) { item in
+            NavigationStack {
+                VaultItemDetail(item: item)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { selectedItem = nil }
+                        }
+                    }
+            }
+        }
     }
 }
 

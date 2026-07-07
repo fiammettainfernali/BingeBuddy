@@ -88,7 +88,9 @@ struct TMDBProvider: MediaProvider, Sendable {
                 genres: (d.genres ?? []).map { $0.name },
                 seasons: seasons,
                 nextEpisodeAirDate: nextDate,
-                nextEpisodeLabel: nextLabel)
+                nextEpisodeLabel: nextLabel,
+                lastAiredSeason: d.last_episode_to_air?.season_number,
+                lastAiredEpisode: d.last_episode_to_air?.episode_number)
         } else {
             let d: TMDBMovieDetails = try await get("/movie/\(sourceId)")
             let year = d.release_date?.split(separator: "-").first.map(String.init)
@@ -222,6 +224,7 @@ private struct TMDBTVDetails: Decodable {
     let genres: [TMDBGenre]?
     let seasons: [TMDBSeason]?
     let next_episode_to_air: TMDBNextEpisode?
+    let last_episode_to_air: TMDBNextEpisode?
 }
 
 private struct TMDBMovieDetails: Decodable {
