@@ -156,6 +156,68 @@ final class BingeBuddyTests: XCTestCase {
         XCTAssertEqual(MetadataService.paged([], page: 1).lastPage, 1)
     }
 
+    // MARK: - Import mapping
+
+    func testAniListStatusMapping() {
+        XCTAssertEqual(ImportService.state(fromAniList: "CURRENT"), .watching)
+        XCTAssertEqual(ImportService.state(fromAniList: "PAUSED"), .watching)
+        XCTAssertEqual(ImportService.state(fromAniList: "COMPLETED"), .finished)
+        XCTAssertEqual(ImportService.state(fromAniList: "DROPPED"), .dropped)
+        XCTAssertEqual(ImportService.state(fromAniList: "PLANNING"), .wantToWatch)
+    }
+
+    func testMALStatusMapping() {
+        XCTAssertEqual(ImportService.state(fromMAL: "Watching"), .watching)
+        XCTAssertEqual(ImportService.state(fromMAL: "On-Hold"), .watching)
+        XCTAssertEqual(ImportService.state(fromMAL: "Completed"), .finished)
+        XCTAssertEqual(ImportService.state(fromMAL: "Dropped"), .dropped)
+        XCTAssertEqual(ImportService.state(fromMAL: "Plan to Watch"), .wantToWatch)
+        XCTAssertEqual(ImportService.state(fromMAL: "2"), .finished)
+    }
+
+    func testScoreToStars() {
+        XCTAssertEqual(ImportService.stars(fromScore10: 0), 0)
+        XCTAssertEqual(ImportService.stars(fromScore10: 1), 1)
+        XCTAssertEqual(ImportService.stars(fromScore10: 7), 4)
+        XCTAssertEqual(ImportService.stars(fromScore10: 10), 5)
+    }
+
+    func testMALExportParsing() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8" ?>
+        <myanimelist>
+          <anime>
+            <series_animedb_id>1</series_animedb_id>
+            <series_title><![CDATA[Cowboy Bebop]]></series_title>
+            <series_episodes>26</series_episodes>
+            <my_watched_episodes>26</my_watched_episodes>
+            <my_score>9</my_score>
+            <my_status>Completed</my_status>
+          </anime>
+          <anime>
+            <series_animedb_id>21</series_animedb_id>
+            <series_title><![CDATA[One Piece]]></series_title>
+            <series_episodes>0</series_episodes>
+            <my_watched_episodes>1100</my_watched_episodes>
+            <my_score>0</my_score>
+            <my_status>Watching</my_status>
+          </anime>
+        </myanimelist>
+        """
+        let entries = MALExportParser.parse(Data(xml.utf8))
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(entries[0].malId, "1")
+        XCTAssertEqual(entries[0].title, "Cowboy Bebop")
+        XCTAssertEqual(entries[0].watchedEpisodes, 26)
+        XCTAssertEqual(entries[0].score10, 9)
+        XCTAssertEqual(entries[1].malId, "21")
+        XCTAssertEqual(entries[1].watchedEpisodes, 1100)
+    }
+
+    func testGunzipRejectsNonGzipData() {
+        XCTAssertNil(ImportService.gunzip(Data("plain xml".utf8)))
+    }
+
     // MARK: - State round-trips
 
     func testWatchStateRawValuesAreStable() {

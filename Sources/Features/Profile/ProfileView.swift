@@ -58,6 +58,12 @@ struct ProfileView: View {
 
     private var dataSection: some View {
         Section("Your data") {
+            NavigationLink {
+                ImportView()
+            } label: {
+                Label("Import from other trackers", systemImage: "square.and.arrow.down")
+            }
+
             if let exportURL {
                 ShareLink(item: exportURL) {
                     Label("Share BingeBuddy-Export.json", systemImage: "doc.badge.arrow.up")

@@ -176,6 +176,70 @@ struct AniListProvider: MediaProvider, Sendable {
             .map { WatchProvider(name: $0.site ?? "Stream", logoURL: nil, url: $0.url) }
     }
 
+    // MARK: - Import support
+
+    /// A user's public anime list (all statuses), for import.
+    func userAnimeList(userName: String) async throws -> [ALUserEntry] {
+        let gql = """
+        query ($name: String) {
+          MediaListCollection(userName: $name, type: ANIME) {
+            lists {
+              isCustomList
+              entries {
+                status
+                progress
+                score(format: POINT_10)
+                media {
+                  id idMal episodes genres seasonYear
+                  title { english romaji }
+                  coverImage { large }
+                  description(asHtml: false)
+                }
+              }
+            }
+          }
+        }
+        """
+        let response: ALCollectionResponse = try await post(query: gql, variables: ["name": userName])
+        var seen = Set<Int>()
+        var entries: [ALUserEntry] = []
+        for list in response.data.MediaListCollection?.lists ?? [] where list.isCustomList != true {
+            for entry in list.entries ?? [] {
+                guard let media = entry.media, seen.insert(media.id).inserted else { continue }
+                entries.append(ALUserEntry(
+                    status: entry.status ?? "PLANNING",
+                    progress: entry.progress ?? 0,
+                    score10: Int((entry.score ?? 0).rounded()),
+                    media: media.asLite))
+            }
+        }
+        return entries
+    }
+
+    /// Batch metadata lookup by MAL ids (50 per request) — used to enrich MAL imports.
+    func mediaByMalIds(_ ids: [Int]) async throws -> [Int: ALMediaLite] {
+        var result: [Int: ALMediaLite] = [:]
+        for chunk in stride(from: 0, to: ids.count, by: 50).map({ Array(ids[$0..<min($0 + 50, ids.count)]) }) {
+            let gql = """
+            query ($ids: [Int]) {
+              Page(perPage: 50) {
+                media(idMal_in: $ids, type: ANIME) {
+                  id idMal episodes genres seasonYear
+                  title { english romaji }
+                  coverImage { large }
+                  description(asHtml: false)
+                }
+              }
+            }
+            """
+            let response: ALBatchResponse = try await post(query: gql, variables: ["ids": chunk])
+            for media in response.data.Page.media {
+                if let mal = media.idMal { result[mal] = media.asLite }
+            }
+        }
+        return result
+    }
+
     func trending() async throws -> [MediaSearchResult] {
         try await page(sort: "TRENDING_DESC")
     }
@@ -239,6 +303,64 @@ private struct AniListMedia: Decodable {
             overview: (description ?? "").strippingHTML)
     }
 }
+
+// App-facing lite media used by import flows.
+struct ALMediaLite: Sendable {
+    let id: Int
+    let idMal: Int?
+    let title: String
+    let posterURL: String?
+    let episodes: Int
+    let genres: [String]
+    let year: String?
+    let overview: String
+}
+
+struct ALUserEntry: Sendable {
+    let status: String     // CURRENT/COMPLETED/PLANNING/DROPPED/PAUSED/REPEATING
+    let progress: Int
+    let score10: Int       // 0–10
+    let media: ALMediaLite
+}
+
+private struct ALImportMedia: Decodable {
+    let id: Int
+    let idMal: Int?
+    let episodes: Int?
+    let genres: [String]?
+    let seasonYear: Int?
+    let title: AniListTitle
+    let coverImage: AniListCover
+    let description: String?
+
+    var asLite: ALMediaLite {
+        ALMediaLite(id: id, idMal: idMal,
+                    title: title.english ?? title.romaji ?? "Untitled",
+                    posterURL: coverImage.large,
+                    episodes: episodes ?? 0,
+                    genres: genres ?? [],
+                    year: seasonYear.map(String.init),
+                    overview: (description ?? "").strippingHTML)
+    }
+}
+
+private struct ALCollectionEntry: Decodable {
+    let status: String?
+    let progress: Int?
+    let score: Double?
+    let media: ALImportMedia?
+}
+private struct ALCollectionList: Decodable {
+    let isCustomList: Bool?
+    let entries: [ALCollectionEntry]?
+}
+private struct ALCollection: Decodable { let lists: [ALCollectionList]? }
+private struct ALCollectionData: Decodable { let MediaListCollection: ALCollection? }
+private struct ALCollectionResponse: Decodable { let data: ALCollectionData }
+
+private struct ALBatchPage: Decodable { let media: [ALImportMedia] }
+private struct ALBatchData: Decodable { let Page: ALBatchPage }
+private struct ALBatchResponse: Decodable { let data: ALBatchData }
 
 private struct ALExternalLink: Decodable { let site: String?; let url: String?; let type: String? }
 private struct ALLinksMedia: Decodable { let externalLinks: [ALExternalLink]? }

@@ -242,6 +242,55 @@ final class LibraryStore: ObservableObject {
             }
     }
 
+    /// Bulk-add imported titles (batched writes). Titles already in the library are skipped.
+    func importItems(_ candidates: [ImportCandidate]) async -> (added: Int, skipped: Int) {
+        guard let householdId, let uid else { return (0, candidates.count) }
+        let existing = Set(myPersonal.map(\.mediaKey))
+        let fresh = candidates.filter { !existing.contains($0.mediaKey) }
+        let itemsRef = db.collection("households").document(householdId).collection("items")
+
+        var added = 0
+        var index = 0
+        while index < fresh.count {
+            let chunk = Array(fresh[index..<min(index + 300, fresh.count)])
+            let batch = db.batch()
+            for candidate in chunk {
+                var data: [String: Any] = [
+                    "ownerUid": uid,
+                    "scope": "personal",
+                    "mediaKey": candidate.mediaKey,
+                    "title": candidate.title,
+                    "mediaTypeRaw": MediaType.anime.rawValue,
+                    "stateRaw": candidate.state.rawValue,
+                    "overview": candidate.overview,
+                    "rating": candidate.rating,
+                    "currentSeason": 1,
+                    "currentEpisode": candidate.episode,
+                    "totalSeasons": candidate.totalEpisodes > 0 ? 1 : 0,
+                    "totalEpisodes": candidate.totalEpisodes,
+                    "genres": candidate.genres,
+                    "source": candidate.source,
+                    "sourceId": candidate.sourceId,
+                    "note": "",
+                    "addedAt": FieldValue.serverTimestamp(),
+                    "updatedAt": FieldValue.serverTimestamp()
+                ]
+                if let poster = candidate.posterURL { data["posterURL"] = poster }
+                if let year = candidate.year { data["year"] = year }
+                batch.setData(data, forDocument: itemsRef.document("\(uid)__\(candidate.mediaKey)"), merge: true)
+            }
+            do {
+                try await batch.commit()
+                added += chunk.count
+            } catch {
+                ErrorCenter.shared.report("Import stopped partway — check your connection and try again.")
+                break
+            }
+            index += 300
+        }
+        return (added, candidates.count - fresh.count)
+    }
+
     func setState(_ item: LibraryItem, to state: WatchState) {
         update(item, ["stateRaw": state.rawValue])
     }

@@ -15,7 +15,7 @@ packages:
 
 settings:
   base:
-    MARKETING_VERSION: "0.18.0"
+    MARKETING_VERSION: "0.19.0"
     CURRENT_PROJECT_VERSION: "39"   # fallback — CI overwrites with latest TestFlight build + 1
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: "6UYHJ5YC3V"            # your Apple Developer Team ID
@@ -65,6 +65,7 @@ targets:
       - path: Sources/Services/Metadata
       - path: Sources/Services/LibraryStore.swift
       - path: Sources/Services/RecommendationEngine.swift
+      - path: Sources/Services/ImportService.swift
       - path: Sources/Support/PosterImage.swift
       - path: Sources/Support/ErrorCenter.swift
       - path: Sources/Support/Secrets.swift
