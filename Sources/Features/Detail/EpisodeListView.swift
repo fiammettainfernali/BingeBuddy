@@ -12,6 +12,7 @@ struct EpisodeListView: View {
     @State private var page: Int
     @State private var lastPage = 1
     @State private var episodes: [EpisodeInfo] = []
+    @State private var synthesized = false
     @State private var isLoading = true
 
     private let service = MetadataService()
@@ -32,6 +33,18 @@ struct EpisodeListView: View {
 
     private var isAnime: Bool { result.mediaType == .anime }
 
+    /// What the list actually shows: real episode data when the source has it, otherwise a
+    /// plain numbered checklist (anime whose episode data isn't on MyAnimeList — common for
+    /// currently-airing shows). The numbered window grows with your progress.
+    private var displayEpisodes: [EpisodeInfo] {
+        guard synthesized else { return episodes }
+        guard let item else { return [] }
+        let count = item.totalEpisodes > 0
+            ? item.totalEpisodes
+            : max(item.currentEpisode + 6, 12)
+        return (1...count).map { EpisodeInfo(number: $0, title: nil, airDate: nil) }
+    }
+
     var body: some View {
         List {
             if !isAnime && seasons.count > 1 {
@@ -43,22 +56,26 @@ struct EpisodeListView: View {
                 .pickerStyle(.menu)
             }
 
-            if isLoading && episodes.isEmpty {
+            if isLoading && displayEpisodes.isEmpty {
                 HStack { Spacer(); ProgressView(); Spacer() }
-            } else if episodes.isEmpty {
-                Text("An episode list isn't available for this title.")
+            } else if displayEpisodes.isEmpty {
+                Text("An episode list isn't available for this title. If it was added a long time ago, removing it and re-adding it from Search may fix that.")
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(episodes) { episode in
+                ForEach(displayEpisodes) { episode in
                     episodeRow(episode)
                 }
             }
 
-            if isAnime && lastPage > 1 {
+            if isAnime && !synthesized && lastPage > 1 {
                 pageControls
             }
 
             Section {
+                if synthesized {
+                    Text("Episode titles and air dates for this title aren't on MyAnimeList yet — showing episode numbers so you can still track.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Text("Tapping an episode marks everything up to it as watched. Tapping the last watched episode unchecks it.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -143,6 +160,9 @@ struct EpisodeListView: View {
         } else {
             episodes = []
         }
+        // No real episode data (airing anime often isn't on MAL yet; legacy items have no
+        // source): fall back to a numbered checklist for anime so tracking still works.
+        synthesized = episodes.isEmpty && isAnime && item != nil
         isLoading = false
     }
 }
