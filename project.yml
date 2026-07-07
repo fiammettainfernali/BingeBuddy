@@ -15,7 +15,7 @@ packages:
 
 settings:
   base:
-    MARKETING_VERSION: "0.19.0"
+    MARKETING_VERSION: "0.20.0"
     CURRENT_PROJECT_VERSION: "39"   # fallback — CI overwrites with latest TestFlight build + 1
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: "6UYHJ5YC3V"            # your Apple Developer Team ID
@@ -34,6 +34,7 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseCrashlytics
+      - target: BingeBuddyWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jessesmith.bingebuddy
@@ -52,6 +53,34 @@ targets:
       properties:
         com.apple.developer.applesignin:
           - Default
+        com.apple.security.application-groups:
+          - group.com.jessesmith.bingebuddy
+
+  # Home-screen widget extension. Shares data with the app via the App Group container.
+  BingeBuddyWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Widgets
+      - path: Sources/Support/WidgetShared.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jessesmith.bingebuddy.widgets
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: BingeBuddy
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Manual
+    info:
+      path: Widgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: BingeBuddyWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.jessesmith.bingebuddy
 
   # Unhosted unit-test bundle: compiles just the pure-logic sources it exercises,
   # so tests don't need to build (or launch) the whole app.

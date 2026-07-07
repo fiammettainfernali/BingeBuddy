@@ -16,6 +16,14 @@ struct RootView: View {
             .map(\.mediaKey).sorted().joined()
     }
 
+    /// Changes when watching shows or their progress change — drives widget refreshes.
+    private var widgetKey: String {
+        library.myPersonal
+            .filter { $0.state == .watching && $0.mediaType != .movie }
+            .map { "\($0.mediaKey):\($0.currentSeason):\($0.currentEpisode)" }
+            .sorted().joined()
+    }
+
     var body: some View {
         TabView {
             LibraryView()
@@ -41,6 +49,9 @@ struct RootView: View {
         .task(id: watchingKey) {
             await notifications.refreshStatus()
             await notifications.scheduleEpisodeReminders(for: library.myPersonal)
+        }
+        .task(id: widgetKey) {
+            await WidgetDataWriter.update(from: library.myPersonal)
         }
         .alert("Something didn't save", isPresented: Binding(
             get: { errors.message != nil },
