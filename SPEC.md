@@ -276,8 +276,8 @@ on-device for two people.
 - **Rewatch flag / count** — mark something as a rewatch instead of resetting progress.
 
 ### Discovery & info
-- ★ **Where to watch** — show which streaming services a title is on (TMDB watch-providers
-  endpoint). "It's on Hulu." Hugely practical.
+- ~~★ **Where to watch**~~ ✅ DONE — provider chips on the detail screen (TMDB/JustWatch for
+  film & TV with logos + "All options" link; direct streaming links for anime).
 - ★ **Browse / trending** — a discover row of trending & popular titles (TMDB trending) so
   Search isn't the only way in.
 - **Runtime / time-to-finish** — estimate hours left in a series.
