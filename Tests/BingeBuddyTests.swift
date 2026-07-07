@@ -93,6 +93,51 @@ final class BingeBuddyTests: XCTestCase {
         XCTAssertEqual(KitsuProvider.currentSeason(now: date(month: 12)).year, 2026)
     }
 
+    // MARK: - Episode checklist watermark math
+
+    func testEpisodeIsWatchedAcrossSeasons() {
+        // Watermark at S2 E3:
+        XCTAssertTrue(EpisodeProgress.isWatched(season: 1, episode: 10, currentSeason: 2, currentEpisode: 3))
+        XCTAssertTrue(EpisodeProgress.isWatched(season: 2, episode: 3, currentSeason: 2, currentEpisode: 3))
+        XCTAssertFalse(EpisodeProgress.isWatched(season: 2, episode: 4, currentSeason: 2, currentEpisode: 3))
+        XCTAssertFalse(EpisodeProgress.isWatched(season: 3, episode: 1, currentSeason: 2, currentEpisode: 3))
+    }
+
+    func testTapMovesWatermarkToTappedEpisode() {
+        let forward = EpisodeProgress.watermarkAfterTap(season: 2, episode: 5,
+                                                        currentSeason: 2, currentEpisode: 3, seasons: [])
+        XCTAssertEqual(forward.season, 2)
+        XCTAssertEqual(forward.episode, 5)
+
+        let backward = EpisodeProgress.watermarkAfterTap(season: 1, episode: 2,
+                                                         currentSeason: 2, currentEpisode: 3, seasons: [])
+        XCTAssertEqual(backward.season, 1)
+        XCTAssertEqual(backward.episode, 2)
+    }
+
+    func testTapWatermarkRewindsOneEpisode() {
+        let result = EpisodeProgress.watermarkAfterTap(season: 2, episode: 3,
+                                                       currentSeason: 2, currentEpisode: 3, seasons: [])
+        XCTAssertEqual(result.season, 2)
+        XCTAssertEqual(result.episode, 2)
+    }
+
+    func testTapSeasonPremiereRewindsIntoPreviousSeason() {
+        let seasons = [SeasonInfo(number: 1, name: "Season 1", episodeCount: 8),
+                       SeasonInfo(number: 2, name: "Season 2", episodeCount: 10)]
+        let result = EpisodeProgress.watermarkAfterTap(season: 2, episode: 1,
+                                                       currentSeason: 2, currentEpisode: 1, seasons: seasons)
+        XCTAssertEqual(result.season, 1)
+        XCTAssertEqual(result.episode, 8)
+    }
+
+    func testTapVeryFirstEpisodeClearsProgress() {
+        let result = EpisodeProgress.watermarkAfterTap(season: 1, episode: 1,
+                                                       currentSeason: 1, currentEpisode: 1, seasons: [])
+        XCTAssertEqual(result.season, 1)
+        XCTAssertEqual(result.episode, 0)
+    }
+
     // MARK: - State round-trips
 
     func testWatchStateRawValuesAreStable() {

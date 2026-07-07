@@ -73,6 +73,16 @@ struct DetailView: View {
                             get: { item.currentEpisode },
                             set: { store.setProgress(item, season: item.currentSeason, episode: max(0, $0)) }
                         ), in: 0...(item.totalEpisodes > 0 ? item.totalEpisodes : 9999))
+                        if result.mediaType != .movie {
+                            NavigationLink {
+                                EpisodeListView(result: result, together: true,
+                                                seasons: details?.seasons ?? [],
+                                                initialSeason: item.currentSeason,
+                                                initialEpisode: item.currentEpisode)
+                            } label: {
+                                Label("Episode checklist", systemImage: "checklist")
+                            }
+                        }
                     }
 
                     Button(role: .destructive) {
@@ -175,6 +185,17 @@ struct DetailView: View {
                         get: { item.currentEpisode },
                         set: { store.setProgress(item, season: item.currentSeason, episode: max(0, $0)) }
                     ), in: 0...(item.totalEpisodes > 0 ? item.totalEpisodes : 9999))
+                    if result.mediaType != .movie {
+                        NavigationLink {
+                            EpisodeListView(result: result, together: false,
+                                            seasons: details?.seasons ?? [],
+                                            initialSeason: item.currentSeason,
+                                            initialEpisode: item.currentEpisode)
+                        } label: {
+                            Label("Episode checklist", systemImage: "checklist")
+                        }
+                        .padding(.top, 4)
+                    }
                 }
             }
 

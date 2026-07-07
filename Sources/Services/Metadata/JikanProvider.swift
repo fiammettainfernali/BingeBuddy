@@ -98,6 +98,20 @@ struct JikanProvider: Sendable {
         }
     }
 
+    /// One page (100 eps) of an anime's episode list, with the total page count.
+    func episodes(animeId: String, page: Int) async throws -> (episodes: [EpisodeInfo], lastPage: Int) {
+        let response: JikanEpisodesResponse = try await get("/anime/\(animeId)/episodes", query: [
+            URLQueryItem(name: "page", value: String(page))
+        ])
+        let iso = ISO8601DateFormatter()
+        let episodes = response.data.map { ep in
+            EpisodeInfo(number: ep.mal_id,
+                        title: ep.title,
+                        airDate: ep.aired.flatMap { iso.date(from: $0) })
+        }
+        return (episodes, response.pagination?.last_visible_page ?? 1)
+    }
+
     func trending(page: Int = 1) async throws -> [MediaSearchResult] {
         let response: JikanListResponse = try await get("/seasons/now", query: [
             URLQueryItem(name: "page", value: String(page)),
@@ -119,6 +133,17 @@ struct JikanProvider: Sendable {
 // MARK: - Jikan DTOs
 
 private struct JikanListResponse: Decodable { let data: [JikanAnime] }
+
+private struct JikanEpisodesResponse: Decodable {
+    let data: [JikanEpisode]
+    let pagination: JikanEpisodesPagination?
+}
+private struct JikanEpisode: Decodable {
+    let mal_id: Int
+    let title: String?
+    let aired: String?
+}
+private struct JikanEpisodesPagination: Decodable { let last_visible_page: Int? }
 private struct JikanSingleResponse: Decodable { let data: JikanAnime }
 private struct JikanRecResponse: Decodable { let data: [JikanRecEntry] }
 private struct JikanRecEntry: Decodable { let entry: JikanAnime }

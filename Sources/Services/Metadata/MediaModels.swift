@@ -36,6 +36,41 @@ struct EpisodeAiring: Sendable {
     let label: String
 }
 
+/// One episode in a checklist.
+struct EpisodeInfo: Identifiable, Sendable {
+    let number: Int
+    let title: String?
+    let airDate: Date?
+    var id: Int { number }
+}
+
+/// Pure watermark math for the episode checklist. Progress is linear (a watermark of
+/// season/episode), so "checking" an episode marks everything up to it as watched.
+enum EpisodeProgress {
+    /// Is (season, episode) covered by the watermark?
+    static func isWatched(season: Int, episode: Int,
+                          currentSeason: Int, currentEpisode: Int) -> Bool {
+        season < currentSeason || (season == currentSeason && episode <= currentEpisode)
+    }
+
+    /// The new watermark after tapping (season, episode): tapping the exact watermark
+    /// rewinds one episode (crossing season boundaries using known episode counts);
+    /// tapping anything else moves the watermark straight there.
+    static func watermarkAfterTap(season: Int, episode: Int,
+                                  currentSeason: Int, currentEpisode: Int,
+                                  seasons: [SeasonInfo]) -> (season: Int, episode: Int) {
+        if season == currentSeason && episode == currentEpisode {
+            if episode > 1 { return (season, episode - 1) }
+            if season > 1 {
+                let previousCount = seasons.first { $0.number == season - 1 }?.episodeCount ?? 0
+                return (season - 1, previousCount)
+            }
+            return (season, 0)
+        }
+        return (season, episode)
+    }
+}
+
 /// How to schedule reminders for a show's upcoming episodes.
 enum EpisodeSchedule: Sendable {
     case dates([EpisodeAiring])              // concrete upcoming air dates (TMDB TV)

@@ -118,6 +118,16 @@ struct TMDBProvider: MediaProvider, Sendable {
         }
     }
 
+    /// Full episode list for one season of a TV series.
+    func episodes(tvId: String, season: Int) async throws -> [EpisodeInfo] {
+        let d: TMDBSeasonDetails = try await get("/tv/\(tvId)/season/\(season)")
+        return (d.episodes ?? []).map { ep in
+            EpisodeInfo(number: ep.episode_number ?? 0,
+                        title: ep.name,
+                        airDate: ep.air_date.flatMap { Self.ymd.date(from: $0) })
+        }
+    }
+
     /// Future air dates for the current/next season of a TV series.
     func upcomingEpisodes(tvId: String) async throws -> [EpisodeAiring] {
         let d: TMDBTVDetails = try await get("/tv/\(tvId)")

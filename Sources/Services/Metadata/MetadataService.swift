@@ -30,6 +30,20 @@ struct MetadataService: Sendable {
         }
     }
 
+    /// Episode checklist for one season (TV) or one 100-episode page (anime).
+    /// `lastPage` is always 1 for TV.
+    func episodes(for result: MediaSearchResult, season: Int, page: Int = 1)
+        async throws -> (episodes: [EpisodeInfo], lastPage: Int) {
+        switch result.source {
+        case "jikan":
+            return try await jikan.episodes(animeId: result.sourceId, page: page)
+        case "tmdb" where result.mediaType == .tv:
+            return (try await tmdb.episodes(tvId: result.sourceId, season: season), 1)
+        default:
+            return ([], 1)
+        }
+    }
+
     /// How to schedule episode reminders for a given title.
     func episodeSchedule(for result: MediaSearchResult) async -> EpisodeSchedule {
         if result.source == "jikan" {
