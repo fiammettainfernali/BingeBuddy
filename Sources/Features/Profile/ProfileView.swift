@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 struct ProfileView: View {
     @EnvironmentObject private var session: Session
@@ -6,6 +7,7 @@ struct ProfileView: View {
     @EnvironmentObject private var notifications: NotificationManager
     @State private var name = ""
     @State private var joinCode = ""
+    @State private var currentNonce: String?
 
     var body: some View {
         NavigationStack {
@@ -20,6 +22,35 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .task { await notifications.refreshStatus() }
+        }
+    }
+
+    private var accountSection: some View {
+        Section("Account") {
+            if session.appleLinked {
+                Label("Backed up with your Apple ID", systemImage: "checkmark.icloud.fill")
+                    .foregroundStyle(.green)
+                Text("Your library survives reinstalls and phone upgrades.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                SignInWithAppleButton(.signIn) { request in
+                    let nonce = Session.randomNonce()
+                    currentNonce = nonce
+                    request.requestedScopes = []
+                    request.nonce = Session.sha256(nonce)
+                } onCompletion: { result in
+                    guard case .success(let auth) = result,
+                          let credential = auth.credential as? ASAuthorizationAppleIDCredential,
+                          let tokenData = credential.identityToken,
+                          let token = String(data: tokenData, encoding: .utf8),
+                          let nonce = currentNonce else { return }
+                    Task { await session.linkWithApple(idToken: token, rawNonce: nonce) }
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 44)
+                Text("Without this, your library is tied to this one phone — sign in so it survives reinstalls and upgrades.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -87,6 +118,7 @@ struct ProfileView: View {
                 .disabled(session.isBusy)
             }
 
+            accountSection
             notificationsSection
             vaultSection
         }
@@ -143,6 +175,7 @@ struct ProfileView: View {
                 }
             }
 
+            accountSection
             notificationsSection
             vaultSection
         }
