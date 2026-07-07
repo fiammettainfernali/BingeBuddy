@@ -15,8 +15,8 @@ packages:
 
 settings:
   base:
-    MARKETING_VERSION: "0.13.0"
-    CURRENT_PROJECT_VERSION: "36"
+    MARKETING_VERSION: "0.13.1"
+    CURRENT_PROJECT_VERSION: "37"
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: "6UYHJ5YC3V"            # your Apple Developer Team ID
 
@@ -32,6 +32,8 @@ targets:
         product: FirebaseFirestore
       - package: Firebase
         product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseCrashlytics
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jessesmith.bingebuddy

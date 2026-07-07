@@ -75,6 +75,19 @@ workflows:
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
 
+      - name: Upload dSYMs to Crashlytics
+        ignore_failure: true   # unsymbolicated crashes are better than a failed build
+        script: |
+          set -x
+          UPLOADER=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type f -name upload-symbols -path "*firebase-ios-sdk*" | head -1)
+          if [ -z "$UPLOADER" ]; then
+            echo "upload-symbols not found in SPM checkout; skipping"
+            exit 0
+          fi
+          find build/ios/xcarchive -type d -name "*.dSYM" | while read -r DSYM; do
+            "$UPLOADER" -gsp Sources/Support/GoogleService-Info.plist -p ios "$DSYM"
+          done
+
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
