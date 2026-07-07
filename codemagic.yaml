@@ -56,6 +56,17 @@ workflows:
         script: |
           xcodegen generate
 
+      - name: Run unit tests
+        script: |
+          DEVICE=$(xcrun simctl list devices available | grep -oE "iPhone [0-9][^(]*" | head -1 | xargs)
+          if [ -z "$DEVICE" ]; then echo "No iPhone simulator found"; exit 1; fi
+          echo "Testing on simulator: $DEVICE"
+          xcodebuild test \
+            -project "$XCODE_PROJECT" \
+            -scheme BingeBuddyTests \
+            -destination "platform=iOS Simulator,name=$DEVICE" \
+            CODE_SIGNING_ALLOWED=NO
+
       - name: Set up code signing
         script: |
           set -ex

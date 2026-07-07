@@ -18,10 +18,7 @@ struct RecommendationEngine {
         guard !chosen.isEmpty else { return [] }
         let service = self.service
 
-        var counts: [String: Int] = [:]
-        var data: [String: MediaSearchResult] = [:]
-        var reasons: [String: String] = [:]
-
+        var gathered: [(seedTitle: String, recs: [MediaSearchResult])] = []
         await withTaskGroup(of: (String, [MediaSearchResult]).self) { group in
             for seed in chosen {
                 let result = seed.asSearchResult
@@ -31,13 +28,27 @@ struct RecommendationEngine {
                     return (seedTitle, recs)
                 }
             }
-            for await (seedTitle, recs) in group {
-                for rec in recs where !exclude.contains(rec.id) {
-                    counts[rec.id, default: 0] += 1
-                    if data[rec.id] == nil {
-                        data[rec.id] = rec
-                        reasons[rec.id] = "Because you liked \(seedTitle)"
-                    }
+            for await pair in group {
+                gathered.append(pair)
+            }
+        }
+        return Self.rank(gathered, exclude: exclude, limit: limit)
+    }
+
+    /// Pure ranking: candidates surfaced by more seeds win; excluded/tracked titles drop out.
+    /// Split from the fetching so it's unit-testable.
+    static func rank(_ gathered: [(seedTitle: String, recs: [MediaSearchResult])],
+                     exclude: Set<String>, limit: Int) -> [Recommendation] {
+        var counts: [String: Int] = [:]
+        var data: [String: MediaSearchResult] = [:]
+        var reasons: [String: String] = [:]
+
+        for (seedTitle, recs) in gathered {
+            for rec in recs where !exclude.contains(rec.id) {
+                counts[rec.id, default: 0] += 1
+                if data[rec.id] == nil {
+                    data[rec.id] = rec
+                    reasons[rec.id] = "Because you liked \(seedTitle)"
                 }
             }
         }

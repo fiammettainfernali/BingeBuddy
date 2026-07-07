@@ -52,3 +52,41 @@ targets:
       properties:
         com.apple.developer.applesignin:
           - Default
+
+  # Unhosted unit-test bundle: compiles just the pure-logic sources it exercises,
+  # so tests don't need to build (or launch) the whole app.
+  BingeBuddyTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Tests
+      - path: Sources/Models/Enums.swift
+      - path: Sources/Services/Metadata
+      - path: Sources/Services/LibraryStore.swift
+      - path: Sources/Services/RecommendationEngine.swift
+      - path: Sources/Support/PosterImage.swift
+      - path: Sources/Support/ErrorCenter.swift
+      - path: Sources/Support/Secrets.swift
+    dependencies:
+      - package: Firebase
+        product: FirebaseFirestore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  BingeBuddy:
+    build:
+      targets:
+        BingeBuddy: all
+    archive:
+      config: Release
+  BingeBuddyTests:
+    build:
+      targets:
+        BingeBuddyTests: [test]
+    test:
+      config: Debug
+      targets:
+        - BingeBuddyTests

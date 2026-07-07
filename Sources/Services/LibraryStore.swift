@@ -82,8 +82,8 @@ final class LibraryStore: ObservableObject {
 
     // MARK: - Recommendation seeds / exclusions
 
-    /// Rank a title's strength as a taste signal (higher = stronger).
-    private func seedWeight(_ item: LibraryItem) -> Int {
+    /// Rank a title's strength as a taste signal (higher = stronger). Static for testability.
+    static func seedWeight(_ item: LibraryItem) -> Int {
         var weight = item.rating
         switch item.state {
         case .finished: weight += 3
@@ -98,7 +98,7 @@ final class LibraryStore: ObservableObject {
     private func seeds(from items: [LibraryItem]) -> [LibraryItem] {
         items.filter { $0.state != .dropped }
             .sorted {
-                let lhs = seedWeight($0), rhs = seedWeight($1)
+                let lhs = Self.seedWeight($0), rhs = Self.seedWeight($1)
                 if lhs != rhs { return lhs > rhs }
                 return ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast)
             }
