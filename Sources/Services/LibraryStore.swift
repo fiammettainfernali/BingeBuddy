@@ -82,8 +82,9 @@ final class LibraryStore: ObservableObject {
 
     // MARK: - Recommendation seeds / exclusions
 
-    /// Rank a title's strength as a taste signal (higher = stronger). Static for testability.
-    static func seedWeight(_ item: LibraryItem) -> Int {
+    /// Rank a title's strength as a taste signal (higher = stronger).
+    /// Pure function — nonisolated so tests (and anything else) can call it directly.
+    nonisolated static func seedWeight(_ item: LibraryItem) -> Int {
         var weight = item.rating
         switch item.state {
         case .finished: weight += 3
