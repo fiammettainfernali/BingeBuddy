@@ -115,6 +115,32 @@ struct MetadataService: Sendable {
         }
     }
 
+    /// Concrete upcoming air dates for one title (TV: TMDB season data; anime: AniList's
+    /// airing schedule, which includes future episodes with exact timestamps).
+    func upcomingAirings(for result: MediaSearchResult) async -> [EpisodeAiring] {
+        switch result.source {
+        case "tmdb" where result.mediaType == .tv:
+            return (try? await tmdb.upcomingEpisodes(tvId: result.sourceId)) ?? []
+        case "jikan":
+            let episodes = (try? await anilist.episodes(malId: result.sourceId)) ?? []
+            return Self.futureAirings(from: episodes)
+        case "anilist":
+            let episodes = (try? await anilist.episodes(anilistId: result.sourceId)) ?? []
+            return Self.futureAirings(from: episodes)
+        default:
+            return []
+        }
+    }
+
+    private static func futureAirings(from episodes: [EpisodeInfo]) -> [EpisodeAiring] {
+        let now = Date()
+        return episodes.compactMap { ep in
+            guard let date = ep.airDate, date > now else { return nil }
+            let name = ep.title.map { " — \($0)" } ?? ""
+            return EpisodeAiring(date: date, label: "E\(ep.number)\(name)")
+        }
+    }
+
     /// How to schedule episode reminders for a given title.
     func episodeSchedule(for result: MediaSearchResult) async -> EpisodeSchedule {
         if result.source == "jikan" {

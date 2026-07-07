@@ -110,7 +110,10 @@ struct LibraryView: View {
             .searchable(text: $searchText, prompt: "Filter your library")
             .navigationDestination(for: MediaSearchResult.self) { DetailView(result: $0) }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink { UpcomingCalendarView() } label: {
+                        Image(systemName: "calendar")
+                    }
                     NavigationLink { CatchUpView() } label: {
                         Image(systemName: "clock.arrow.circlepath")
                     }

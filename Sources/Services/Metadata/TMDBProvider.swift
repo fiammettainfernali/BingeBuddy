@@ -78,7 +78,7 @@ struct TMDBProvider: MediaProvider, Sendable {
                let date = Self.ymd.date(from: airStr) {
                 nextDate = date
                 let title = next.name.map { " — \($0)" } ?? ""
-                nextLabel = "S\(next.season_number ?? 0) E\(next.episode_number ?? 0)\(title) airs today"
+                nextLabel = "S\(next.season_number ?? 0) E\(next.episode_number ?? 0)\(title)"
             }
 
             return MediaDetails(
@@ -157,7 +157,7 @@ struct TMDBProvider: MediaProvider, Sendable {
                   let date = Self.ymd.date(from: airStr),
                   date >= today else { return nil }
             let name = ep.name.map { " — \($0)" } ?? ""
-            return EpisodeAiring(date: date, label: "S\(season) E\(ep.episode_number ?? 0)\(name) airs today")
+            return EpisodeAiring(date: date, label: "S\(season) E\(ep.episode_number ?? 0)\(name)")
         }
     }
 

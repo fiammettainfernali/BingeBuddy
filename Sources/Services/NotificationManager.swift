@@ -62,7 +62,8 @@ final class NotificationManager: ObservableObject {
                     comps.hour = 9
                     let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
                     await addReminder(id: "ep-\(item.mediaKey)-\(comps.year ?? 0)-\(comps.month ?? 0)-\(comps.day ?? 0)",
-                                      title: "New episode: \(item.title)", body: airing.label, trigger: trigger)
+                                      title: "New episode: \(item.title)",
+                                      body: "\(airing.label) airs today", trigger: trigger)
                     scheduled += 1
                 }
             case .weekly(let weekday, let label):
