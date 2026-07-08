@@ -100,13 +100,15 @@ struct UpNextWidgetView: View {
                 .frame(width: width, height: height)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         } else {
+            // Diagnostic placeholders: gray = the app never cached a poster for this show;
+            // orange = a poster file was recorded but this extension can't load it.
             RoundedRectangle(cornerRadius: 6)
                 .fill(.quaternary)
                 .frame(width: width, height: height)
                 .overlay {
                     Image(systemName: "film")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(show.posterFile == nil ? Color.secondary : Color.orange)
                 }
         }
     }

@@ -1,5 +1,4 @@
 import Foundation
-import UIKit
 import WidgetKit
 
 /// Keeps the home-screen widget's snapshot in sync with the library: the shows you're
@@ -30,7 +29,9 @@ enum WidgetDataWriter {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// Downloads and downsizes the poster into the shared container (once per title).
+    /// Downloads the poster into the shared container (once per title). Stored as-is —
+    /// source posters are small (~50–150 KB), and skipping re-encoding removes a whole
+    /// class of failure modes.
     private static func cachePoster(for item: LibraryItem) async -> String? {
         guard let poster = item.posterURL, let url = URL(string: poster) else { return nil }
         let safeKey = item.mediaKey.replacingOccurrences(of: "/", with: "_")
@@ -38,15 +39,14 @@ enum WidgetDataWriter {
         guard let destination = WidgetStore.posterURL(file) else { return nil }
         if FileManager.default.fileExists(atPath: destination.path) { return file }
 
-        guard let (data, _) = try? await URLSession.shared.data(from: url),
-              let image = UIImage(data: data) else { return nil }
-        let target = CGSize(width: 200, height: 300)
-        let renderer = UIGraphicsImageRenderer(size: target)
-        let scaled = renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: target))
+        guard let (data, response) = try? await URLSession.shared.data(from: url),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              !data.isEmpty else { return nil }
+        do {
+            try data.write(to: destination, options: [.atomic, .noFileProtection])
+            return file
+        } catch {
+            return nil
         }
-        guard let jpeg = scaled.jpegData(compressionQuality: 0.75) else { return nil }
-        try? jpeg.write(to: destination, options: .atomic)
-        return file
     }
 }
